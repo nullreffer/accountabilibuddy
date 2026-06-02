@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerOrCoOwner(groupId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId == request.auth.uid ||
+        request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.coOwnerIds
+      );
+    }
+
+    function isMember(groupId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isSelf(uid);
+    }
+
+    match /groups/{groupId} {
+      allow read: if isMember(groupId);
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isOwnerOrCoOwner(groupId);
+
+      match /members/{uid} {
+        allow read: if isMember(groupId);
+        allow create: if isOwnerOrCoOwner(groupId) || (
+          isSelf(uid) &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.role == 'member'
+        );
+        allow update: if isOwnerOrCoOwner(groupId) || (
+          isSelf(uid) &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.displayName == resource.data.displayName &&
+          request.resource.data.email == resource.data.email &&
+          request.resource.data.photoURL == resource.data.photoURL &&
+          request.resource.data.joinedAt == resource.data.joinedAt &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notificationsEnabled'])
+        );
+        allow delete: if isOwnerOrCoOwner(groupId);
+      }
+
+      match /schedules/{scheduleId} {
+        allow read: if isMember(groupId);
+        allow write: if isOwnerOrCoOwner(groupId);
+      }
+
+      match /checkins/{checkinId} {
+        allow read: if isMember(groupId);
+        allow create: if isMember(groupId) && request.resource.data.uid == request.auth.uid;
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /invites/{token} {
+        allow read: if isMember(groupId);
+        allow write: if isOwnerOrCoOwner(groupId);
+      }
+
+      match /jars/{uid} {
+        allow read: if isMember(groupId);
+        allow write: if false;
+      }
+    }
+  }
+}

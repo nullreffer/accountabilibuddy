@@ -12,7 +12,7 @@ const TEMPLATES = [
   { name: 'Family First', description: 'Checking in on parents once a week — stay connected with the people who matter.' },
   { name: 'Breathe & Flow', description: 'Breathing and yoga twice a week — prioritise mindfulness and flexibility.' },
   { name: 'Step Squad', description: 'Walking 5 miles a week — rack up steps and stay active together.' },
-  { name: 'Book Club', description: 'Reading an hour everyday — build a daily reading habit, one page at a time.' }
+  { name: 'Book Club', description: 'Reading an hour every day — build a daily reading habit, one page at a time.' }
 ] as const;
 
 const CreateGroupPage = () => {

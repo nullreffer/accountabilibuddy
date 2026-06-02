@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { badRequest, created, handleError, notFound, ok } from '@/lib/response';
 import { sendPushToGroup } from '@/lib/push';
+import { postSystemMessage } from '@/lib/chat';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -156,6 +157,11 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       `${user.displayName} completed their check-in in ${group.name}!`,
       { groupId, type: 'checkin' }
     ).catch((e) => console.error('Push error', e));
+
+    // Post system chat message (non-blocking)
+    postSystemMessage(groupId, `${user.displayName} just completed their check-in! 🎉`).catch(
+      (e) => console.error('Chat system message error', e)
+    );
 
     return created(mapCheckin(checkin));
   } catch (err) {

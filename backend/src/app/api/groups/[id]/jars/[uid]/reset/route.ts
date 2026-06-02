@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { forbidden, handleError, ok } from '@/lib/response';
+import { postSystemMessage } from '@/lib/chat';
 
 type RouteContext = { params: Promise<{ id: string; uid: string }> };
 
@@ -23,6 +24,17 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       update: { count: 0, totalOwed: 0 },
       create: { userId: uid, groupId, count: 0, totalOwed: 0 }
     });
+
+    // Post system chat message (non-blocking)
+    Promise.all([
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.user.findUnique({ where: { id: uid } })
+    ])
+      .then(([actor, target]) => {
+        if (!actor || !target) return;
+        return postSystemMessage(groupId, `${actor.displayName} reset ${target.displayName}'s jar. 🏦`);
+      })
+      .catch((e) => console.error('Chat system message error', e));
 
     return ok({ uid, count: jar.count, totalOwed: Number(jar.totalOwed) });
   } catch (err) {

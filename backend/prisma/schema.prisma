@@ -20,6 +20,7 @@ model User {
   jars              Jar[]
   checkins          Checkin[]
   invitesCreated    Invite[]
+  chatMessages      ChatMessage[]
 }
 
 model PushSubscription {
@@ -48,6 +49,7 @@ model Group {
   checkins  Checkin[]
   invites   Invite[]
   jars      Jar[]
+  chatMessages ChatMessage[]
 }
 
 model GroupMember {
@@ -114,4 +116,16 @@ model Jar {
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@id([userId, groupId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String?
+  type      String   @default("message")
+  text      String
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

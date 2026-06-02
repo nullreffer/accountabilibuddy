@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { badRequest, forbidden, handleError, ok } from '@/lib/response';
+import { postSystemMessage } from '@/lib/chat';
 
 type RouteContext = { params: Promise<{ id: string; uid: string }> };
 
@@ -40,6 +41,28 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         totalOwed: body.totalOwed ?? 0
       }
     });
+
+    // Post system chat message (non-blocking)
+    Promise.all([
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.user.findUnique({ where: { id: uid } })
+    ])
+      .then(([actor, target]) => {
+        if (!actor || !target) return;
+        const parts: string[] = [];
+        if (body.totalOwed !== undefined) {
+          parts.push(`$${Number(jar.totalOwed).toFixed(2)} owed`);
+        }
+        if (body.count !== undefined) {
+          parts.push(`${jar.count} miss${jar.count === 1 ? '' : 'es'}`);
+        }
+        const detail = parts.length ? ` (${parts.join(', ')})` : '';
+        return postSystemMessage(
+          groupId,
+          `${actor.displayName} updated ${target.displayName}'s jar${detail}.`
+        );
+      })
+      .catch((e) => console.error('Chat system message error', e));
 
     return ok({ uid, count: jar.count, totalOwed: Number(jar.totalOwed) });
   } catch (err) {

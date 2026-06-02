@@ -264,3 +264,22 @@ export const savePushSubscription = (sub: {
 
 export const deletePushSubscription = (endpoint: string) =>
   request('DELETE', '/api/push/subscribe', { endpoint });
+
+// ---------- Chat ----------
+
+export interface ChatMessage {
+  id: string;
+  groupId: string;
+  userId: string | null;
+  type: 'message' | 'system';
+  text: string;
+  createdAt: string;
+  userDisplayName: string | null;
+  userPhotoURL: string | null;
+}
+
+export const fetchChatMessages = (groupId: string, limit = 50) =>
+  request<ChatMessage[]>('GET', `/api/groups/${groupId}/chat?limit=${limit}`);
+
+export const sendChatMessage = (groupId: string, text: string) =>
+  request<ChatMessage>('POST', `/api/groups/${groupId}/chat`, { text });

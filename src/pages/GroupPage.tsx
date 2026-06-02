@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import ChatPanel from '../components/ChatPanel';
 import CheckinFeed from '../components/CheckinFeed';
 import GroupHistoryChart from '../components/GroupHistoryChart';
 import InstallPrompt from '../components/InstallPrompt';
@@ -15,7 +16,7 @@ import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
 import { createCheckin, updateGroup, deleteGroup } from '../lib/api';
 
-const tabs = ['overview', 'feed', 'chart', 'schedules', 'members', 'jar', 'invites', 'settings'] as const;
+const tabs = ['overview', 'chat', 'feed', 'chart', 'schedules', 'members', 'jar', 'invites', 'settings'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'];
 
@@ -304,6 +305,7 @@ const GroupPage = () => {
         </section>
       ) : null}
 
+      {activeTab === 'chat' ? <ChatPanel groupId={groupId} /> : null}
       {activeTab === 'feed' ? <CheckinFeed groupId={groupId} /> : null}
       {activeTab === 'chart' ? <GroupHistoryChart groupId={groupId} /> : null}
 

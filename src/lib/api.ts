@@ -249,6 +249,9 @@ export const fetchJars = (groupId: string) =>
 export const resetJar = (groupId: string, uid: string) =>
   request('POST', `/api/groups/${groupId}/jars/${uid}/reset`);
 
+export const updateJar = (groupId: string, uid: string, data: { count?: number; totalOwed?: number }) =>
+  request<{ uid: string; count: number; totalOwed: number }>('PATCH', `/api/groups/${groupId}/jars/${uid}`, data);
+
 // ---------- Push ----------
 
 export const fetchVapidKey = () =>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchJars, resetJar as apiResetJar, type Jar } from '../lib/api';
+import { fetchJars, resetJar as apiResetJar, updateJar as apiUpdateJar, type Jar } from '../lib/api';
 
 export const useJar = (groupId: string) => {
   const [jars, setJars] = useState<Jar[]>([]);
@@ -39,4 +39,12 @@ export const useJar = (groupId: string) => {
 
 export const resetJar = async (groupId: string, uid: string): Promise<void> => {
   await apiResetJar(groupId, uid);
+};
+
+export const updateJar = async (
+  groupId: string,
+  uid: string,
+  data: { count?: number; totalOwed?: number }
+): Promise<void> => {
+  await apiUpdateJar(groupId, uid, data);
 };

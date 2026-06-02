@@ -1,13 +1,3 @@
-import {
-  deleteDoc,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  collection,
-  writeBatch,
-  getDoc
-} from 'firebase/firestore';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CheckinFeed from '../components/CheckinFeed';
@@ -23,8 +13,7 @@ import { useCheckins } from '../hooks/useCheckins';
 import { useGroup } from '../hooks/useGroup';
 import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
-import { db } from '../lib/firebase';
-import { uploadCheckinPhoto } from '../lib/storage';
+import { createCheckin, updateGroup, deleteGroup } from '../lib/api';
 
 const tabs = ['overview', 'feed', 'chart', 'schedules', 'members', 'jar', 'invites', 'settings'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -32,23 +21,10 @@ const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver
 
 const todayKey = () => new Date().toISOString().split('T')[0];
 
-const deleteGroupDeep = async (groupId: string) => {
-  const collectionsToClear = ['members', 'schedules', 'checkins', 'invites', 'jars'];
-  for (const collectionName of collectionsToClear) {
-    const snapshot = await getDocs(collection(db, 'groups', groupId, collectionName));
-    if (!snapshot.empty) {
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((documentSnapshot) => batch.delete(documentSnapshot.ref));
-      await batch.commit();
-    }
-  }
-  await deleteDoc(doc(db, 'groups', groupId));
-};
-
 const GroupPage = () => {
   const { groupId = '' } = useParams();
   const navigate = useNavigate();
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const { group, member, loading, error } = useGroup(groupId);
   const { members } = useMembers(groupId);
   const { schedules, loading: schedulesLoading } = useSchedules(groupId);
@@ -75,8 +51,8 @@ const GroupPage = () => {
   const today = todayKey();
 
   const todaysCheckin = useMemo(
-    () => checkins.find((checkin) => checkin.uid === user?.uid && checkin.date === today && checkin.status === 'completed'),
-    [checkins, today, user?.uid]
+    () => checkins.find((checkin) => checkin.uid === user?.id && checkin.date === today && checkin.status === 'completed'),
+    [checkins, today, user?.id]
   );
 
   useEffect(() => {
@@ -97,7 +73,7 @@ const GroupPage = () => {
   };
 
   const handleCheckIn = async () => {
-    if (!group || !user || !userProfile) {
+    if (!group || !user) {
       return;
     }
 
@@ -107,27 +83,10 @@ const GroupPage = () => {
     }
 
     const scheduleId = selectedScheduleId === 'manual' ? schedules[0]?.id || 'manual' : selectedScheduleId;
-    const checkinId = `${scheduleId}_${user.uid}_${today}`;
 
     try {
       setCheckinLoading(true);
-      const existing = await getDoc(doc(db, 'groups', groupId, 'checkins', checkinId));
-      if (existing.exists() && existing.data().status === 'completed') {
-        window.alert('You already checked in for this schedule today.');
-        return;
-      }
-
-      const photoURL = photoFile ? await uploadCheckinPhoto(groupId, checkinId, photoFile) : null;
-      await setDoc(doc(db, 'groups', groupId, 'checkins', checkinId), {
-        uid: user.uid,
-        scheduleId,
-        date: today,
-        completedAt: new Date(),
-        photoURL,
-        status: 'completed',
-        userDisplayName: userProfile.displayName,
-        userPhotoURL: userProfile.photoURL
-      });
+      await createCheckin(groupId, scheduleId, photoFile);
       setPhotoFile(null);
     } catch (error) {
       console.error('Unable to check in', error);
@@ -197,14 +156,12 @@ const GroupPage = () => {
 
     try {
       setSettingsSaving(true);
-      await updateDoc(doc(db, 'groups', group.id), {
+      await updateGroup(group.id, {
         name: settingsName.trim(),
         description: settingsDescription.trim(),
-        settings: {
-          jarEnabled: settingsJarEnabled,
-          jarAmount: settingsJarEnabled ? Number(settingsJarAmount) : 0,
-          photoProofRequired: settingsPhotoProof
-        }
+        jarEnabled: settingsJarEnabled,
+        jarAmount: settingsJarEnabled ? Number(settingsJarAmount) : 0,
+        photoProofRequired: settingsPhotoProof
       });
     } catch (error) {
       console.error('Unable to save settings', error);
@@ -220,7 +177,7 @@ const GroupPage = () => {
     }
 
     try {
-      await deleteGroupDeep(group.id);
+      await deleteGroup(group.id);
       navigate('/dashboard');
     } catch (error) {
       console.error('Unable to delete group', error);

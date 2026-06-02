@@ -11,7 +11,7 @@
     "format": "prettier --write src"
   },
   "dependencies": {
-    "firebase": "^10.7.0",
+    "@react-oauth/google": "^0.12.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",

@@ -59,7 +59,7 @@ const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUser
   return (
     <div className="member-list">
       {members.map((member) => {
-        const isSelf = member.uid === user?.uid;
+        const isSelf = member.uid === user?.id;
         const canPromote = isOwner && member.role === 'member';
         const canRemove = canManage && !isSelf && member.role !== 'owner';
 

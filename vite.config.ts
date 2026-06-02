@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       manifest: {
         name: 'Accountabilibuddy',
         short_name: 'Buddy',
@@ -32,38 +35,8 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*googleapis\.com\/.*$/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'google-apis-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: ({ request }) => ['style', 'script', 'worker', 'image', 'font'].includes(request.destination),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'static-assets-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       }
     })
   ]

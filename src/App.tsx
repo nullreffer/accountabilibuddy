@@ -1,3 +1,4 @@
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -65,15 +66,17 @@ const AppLayout = () => {
 };
 
 const App = () => (
-  <ErrorBoundary>
-    <AuthProvider>
-      <NotificationProvider>
-        <BrowserRouter>
-          <AppLayout />
-        </BrowserRouter>
-      </NotificationProvider>
-    </AuthProvider>
-  </ErrorBoundary>
+  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
+    <ErrorBoundary>
+      <AuthProvider>
+        <NotificationProvider>
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
+        </NotificationProvider>
+      </AuthProvider>
+    </ErrorBoundary>
+  </GoogleOAuthProvider>
 );
 
 export default App;

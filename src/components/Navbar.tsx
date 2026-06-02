@@ -30,7 +30,7 @@ const Navbar = () => {
         <div className="navbar__profile">
           <img
             className="avatar avatar--small"
-            src={user?.photoURL || getAvatarFallback(user?.displayName || 'AB')}
+            src={user?.photoUrl || getAvatarFallback(user?.displayName || 'AB')}
             alt={user?.displayName || 'Profile'}
           />
           <button className="button button--ghost" onClick={() => void signOut()}>

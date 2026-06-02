@@ -1,40 +1,6 @@
-import { doc, onSnapshot, type DocumentData, type Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
-import type { Group, GroupMember } from '../types';
-
-const toDate = (value: Timestamp | Date | undefined) => {
-  if (!value) {
-    return new Date();
-  }
-
-  return value instanceof Date ? value : value.toDate();
-};
-
-const mapGroup = (groupId: string, data: DocumentData): Group => ({
-  id: groupId,
-  name: (data.name as string) ?? '',
-  description: (data.description as string) ?? '',
-  ownerId: (data.ownerId as string) ?? '',
-  coOwnerIds: Array.isArray(data.coOwnerIds) ? (data.coOwnerIds as string[]) : [],
-  createdAt: toDate(data.createdAt as Timestamp | Date | undefined),
-  settings: {
-    photoProofRequired: Boolean(data.settings?.photoProofRequired),
-    jarEnabled: Boolean(data.settings?.jarEnabled),
-    jarAmount: Number(data.settings?.jarAmount ?? 0)
-  }
-});
-
-const mapMember = (data: DocumentData): GroupMember => ({
-  uid: (data.uid as string) ?? '',
-  role: (data.role as GroupMember['role']) ?? 'member',
-  notificationsEnabled: Boolean(data.notificationsEnabled),
-  joinedAt: toDate(data.joinedAt as Timestamp | Date | undefined),
-  displayName: (data.displayName as string) ?? '',
-  email: (data.email as string) ?? '',
-  photoURL: (data.photoURL as string) ?? ''
-});
+import { fetchGroup, fetchMembers, type Group, type GroupMember } from '../lib/api';
 
 export const useGroup = (groupId: string) => {
   const { user } = useAuth();
@@ -51,39 +17,39 @@ export const useGroup = (groupId: string) => {
       return;
     }
 
-    setLoading(true);
-    const unsubscribers: Array<() => void> = [];
+    let cancelled = false;
 
-    unsubscribers.push(
-      onSnapshot(
-        doc(db, 'groups', groupId),
-        (snapshot) => {
-          if (!snapshot.exists()) {
-            setError('Group not found.');
-            setGroup(null);
-            setLoading(false);
-            return;
-          }
+    const load = async () => {
+      try {
+        const [groupData, members] = await Promise.all([
+          fetchGroup(groupId),
+          fetchMembers(groupId)
+        ]);
 
-          setGroup(mapGroup(snapshot.id, snapshot.data()));
-          setError(null);
-          setLoading(false);
-        },
-        (snapshotError) => {
-          setError(snapshotError.message);
-          setLoading(false);
+        if (cancelled) return;
+
+        setGroup(groupData);
+        setError(null);
+
+        const me = members.find((m) => m.uid === user.id) ?? null;
+        setMember(me);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load group');
+          setGroup(null);
         }
-      )
-    );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
 
-    unsubscribers.push(
-      onSnapshot(doc(db, 'groups', groupId, 'members', user.uid), (snapshot) => {
-        setMember(snapshot.exists() ? mapMember(snapshot.data()) : null);
-      })
-    );
+    setLoading(true);
+    void load();
+    const interval = setInterval(() => void load(), 10_000);
 
     return () => {
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      cancelled = true;
+      clearInterval(interval);
     };
   }, [groupId, user]);
 

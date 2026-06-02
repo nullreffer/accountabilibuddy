@@ -1,37 +1,10 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  type DocumentData,
-  type Timestamp
-} from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db } from '../lib/firebase';
-import type { GroupMember } from '../types';
-
-const toDate = (value: Timestamp | Date | undefined) => {
-  if (!value) {
-    return new Date();
-  }
-
-  return value instanceof Date ? value : value.toDate();
-};
-
-const mapMember = (data: DocumentData): GroupMember => ({
-  uid: (data.uid as string) ?? '',
-  role: (data.role as GroupMember['role']) ?? 'member',
-  notificationsEnabled: Boolean(data.notificationsEnabled),
-  joinedAt: toDate(data.joinedAt as Timestamp | Date | undefined),
-  displayName: (data.displayName as string) ?? '',
-  email: (data.email as string) ?? '',
-  photoURL: (data.photoURL as string) ?? ''
-});
+import {
+  fetchMembers,
+  updateMember,
+  removeMember as apiRemoveMember,
+  type GroupMember
+} from '../lib/api';
 
 export const useMembers = (groupId: string) => {
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -44,35 +17,37 @@ export const useMembers = (groupId: string) => {
       return;
     }
 
-    const unsubscribe = onSnapshot(
-      query(collection(db, 'groups', groupId, 'members'), orderBy('joinedAt', 'asc')),
-      (snapshot) => {
-        setMembers(snapshot.docs.map((docSnapshot) => mapMember(docSnapshot.data())));
-        setLoading(false);
-      }
-    );
+    let cancelled = false;
 
-    return () => unsubscribe();
+    const load = async () => {
+      try {
+        const data = await fetchMembers(groupId);
+        if (!cancelled) setMembers(data);
+      } catch {
+        if (!cancelled) setMembers([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void load();
+    const interval = setInterval(() => void load(), 15_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [groupId]);
 
   return { members, loading };
 };
 
 export const promoteToCoOwner = async (groupId: string, uid: string): Promise<void> => {
-  await updateDoc(doc(db, 'groups', groupId, 'members', uid), {
-    role: 'coowner'
-  });
-
-  await updateDoc(doc(db, 'groups', groupId), {
-    coOwnerIds: arrayUnion(uid)
-  });
+  await updateMember(groupId, uid, { role: 'coowner' });
 };
 
 export const removeMember = async (groupId: string, uid: string): Promise<void> => {
-  await deleteDoc(doc(db, 'groups', groupId, 'members', uid));
-  await updateDoc(doc(db, 'groups', groupId), {
-    coOwnerIds: arrayRemove(uid)
-  });
+  await apiRemoveMember(groupId, uid);
 };
 
 export const updateNotifications = async (
@@ -80,7 +55,5 @@ export const updateNotifications = async (
   uid: string,
   enabled: boolean
 ): Promise<void> => {
-  await updateDoc(doc(db, 'groups', groupId, 'members', uid), {
-    notificationsEnabled: enabled
-  });
+  await updateMember(groupId, uid, { notificationsEnabled: enabled });
 };

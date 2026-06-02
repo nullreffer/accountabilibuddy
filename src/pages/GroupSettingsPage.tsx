@@ -1,22 +1,8 @@
-import { collection, deleteDoc, doc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useGroup } from '../hooks/useGroup';
-import { db } from '../lib/firebase';
-
-const deleteGroupDeep = async (groupId: string) => {
-  const collectionsToClear = ['members', 'schedules', 'checkins', 'invites', 'jars'];
-  for (const collectionName of collectionsToClear) {
-    const snapshot = await getDocs(collection(db, 'groups', groupId, collectionName));
-    if (!snapshot.empty) {
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((documentSnapshot) => batch.delete(documentSnapshot.ref));
-      await batch.commit();
-    }
-  }
-  await deleteDoc(doc(db, 'groups', groupId));
-};
+import { updateGroup, deleteGroup } from '../lib/api';
 
 const GroupSettingsPage = () => {
   const { groupId = '' } = useParams();
@@ -67,14 +53,12 @@ const GroupSettingsPage = () => {
 
     try {
       setSaving(true);
-      await updateDoc(doc(db, 'groups', groupId), {
+      await updateGroup(groupId, {
         name: name.trim(),
         description: description.trim(),
-        settings: {
-          jarEnabled,
-          jarAmount: jarEnabled ? Number(jarAmount) : 0,
-          photoProofRequired
-        }
+        jarEnabled,
+        jarAmount: jarEnabled ? Number(jarAmount) : 0,
+        photoProofRequired
       });
       navigate(`/group/${groupId}`);
     } catch (error) {
@@ -96,7 +80,7 @@ const GroupSettingsPage = () => {
     }
 
     try {
-      await deleteGroupDeep(groupId);
+      await deleteGroup(groupId);
       navigate('/dashboard');
     } catch (error) {
       console.error('Unable to delete group', error);

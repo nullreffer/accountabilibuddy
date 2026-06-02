@@ -1,11 +1,10 @@
-import { doc, setDoc } from 'firebase/firestore';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
+import { createGroup } from '../lib/api';
 
 const CreateGroupPage = () => {
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -17,7 +16,7 @@ const CreateGroupPage = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!user || !userProfile) {
+    if (!user) {
       return;
     }
 
@@ -33,40 +32,14 @@ const CreateGroupPage = () => {
 
     try {
       setLoading(true);
-      const groupRef = doc(db, 'groups', crypto.randomUUID());
-      await setDoc(groupRef, {
+      const group = await createGroup({
         name: name.trim(),
         description: description.trim(),
-        ownerId: user.uid,
-        coOwnerIds: [],
-        createdAt: new Date(),
-        settings: {
-          photoProofRequired,
-          jarEnabled,
-          jarAmount: jarEnabled ? Number(jarAmount) : 0
-        }
+        photoProofRequired,
+        jarEnabled,
+        jarAmount: jarEnabled ? Number(jarAmount) : 0
       });
-
-      await setDoc(doc(db, 'groups', groupRef.id, 'members', user.uid), {
-        uid: user.uid,
-        role: 'owner',
-        notificationsEnabled: true,
-        joinedAt: new Date(),
-        displayName: userProfile.displayName,
-        email: userProfile.email,
-        photoURL: userProfile.photoURL
-      });
-
-      if (jarEnabled) {
-        await setDoc(doc(db, 'groups', groupRef.id, 'jars', user.uid), {
-          uid: user.uid,
-          count: 0,
-          totalOwed: 0,
-          displayName: userProfile.displayName
-        });
-      }
-
-      navigate(`/group/${groupRef.id}`);
+      navigate(`/group/${group.id}`);
     } catch (error) {
       console.error('Unable to create group', error);
       window.alert('Unable to create your group right now.');

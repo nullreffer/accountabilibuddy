@@ -1,11 +1,16 @@
-export const getAvatarFallback = (label = 'AB') => {
-  const initials = label
+export const getAvatarFallback = (name: string): string => {
+  const initials = name
     .split(' ')
-    .filter(Boolean)
+    .map((part) => part[0] ?? '')
     .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'AB';
+    .join('')
+    .toUpperCase();
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="${initials}"><rect width="96" height="96" rx="48" fill="#4f46e5"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="34" font-weight="700">${initials}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  const hue = [...name].reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+    <rect width="64" height="64" fill="hsl(${hue},60%,55%)" rx="32"/>
+    <text x="32" y="38" font-family="sans-serif" font-size="22" font-weight="bold" fill="white" text-anchor="middle">${initials}</text>
+  </svg>`;
+
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 };

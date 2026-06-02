@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { onForegroundMessage, requestNotificationPermission } from '../lib/fcm';
+import { requestNotificationPermission } from '../lib/push';
 import { useAuth } from './AuthContext';
 
 interface NotificationItem {
@@ -25,33 +25,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    void requestNotificationPermission(user.uid);
-
-    let isMounted = true;
-    let unsubscribe = () => undefined;
-
-    void onForegroundMessage((payload) => {
-      if (!isMounted) {
-        return;
-      }
-
-      const title = payload.notification?.title ?? 'Notification';
-      const body = payload.notification?.body ?? 'You have a new update.';
-      const id = crypto.randomUUID();
-
-      setNotifications((current) => [...current, { id, title, body }]);
-
-      window.setTimeout(() => {
-        setNotifications((current) => current.filter((item) => item.id !== id));
-      }, 5000);
-    }).then((value) => {
-      unsubscribe = value;
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
+    void requestNotificationPermission();
   }, [user]);
 
   const dismissNotification = (id: string) => {

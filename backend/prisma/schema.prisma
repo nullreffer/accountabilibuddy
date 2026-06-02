@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  googleId    String   @unique
+  displayName String
+  email       String   @unique
+  photoUrl    String?
+  createdAt   DateTime @default(now())
+
+  pushSubscriptions PushSubscription[]
+  memberships       GroupMember[]
+  jars              Jar[]
+  checkins          Checkin[]
+  invitesCreated    Invite[]
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Group {
+  id                 String   @id @default(uuid())
+  name               String
+  description        String   @default("")
+  ownerId            String
+  createdAt          DateTime @default(now())
+  photoProofRequired Boolean  @default(false)
+  jarEnabled         Boolean  @default(false)
+  jarAmount          Decimal  @default(0) @db.Decimal(10, 2)
+
+  members   GroupMember[]
+  schedules Schedule[]
+  checkins  Checkin[]
+  invites   Invite[]
+  jars      Jar[]
+}
+
+model GroupMember {
+  userId               String
+  groupId              String
+  role                 String   @default("member")
+  notificationsEnabled Boolean  @default(true)
+  joinedAt             DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}
+
+model Schedule {
+  id         String   @id @default(uuid())
+  groupId    String
+  name       String
+  frequency  String
+  daysOfWeek Int[]
+  time       String
+  timezone   String   @default("UTC")
+  createdAt  DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Checkin {
+  id          String   @id
+  userId      String
+  groupId     String
+  scheduleId  String
+  date        String
+  completedAt DateTime
+  photoUrl    String?
+  status      String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Invite {
+  id        String   @id @default(uuid())
+  token     String   @unique @default(uuid())
+  groupId   String
+  createdBy String
+  email     String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User  @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+}
+
+model Jar {
+  userId    String
+  groupId   String
+  count     Int     @default(0)
+  totalOwed Decimal @default(0) @db.Decimal(10, 2)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}

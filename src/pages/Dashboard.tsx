@@ -1,10 +1,8 @@
-import { collection, collectionGroup, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
-import type { Group } from '../types';
+import { fetchGroups, type Group } from '../lib/api';
 
 interface DashboardGroup extends Group {
   memberCount: number;
@@ -22,58 +20,26 @@ const Dashboard = () => {
       return;
     }
 
-    const membershipQuery = query(collectionGroup(db, 'members'), where('uid', '==', user.uid));
-    const unsubscribe = onSnapshot(membershipQuery, async (snapshot) => {
-      if (!snapshot.docs.length) {
-        setGroups([]);
-        setLoading(false);
-        return;
-      }
+    let cancelled = false;
 
+    const load = async () => {
       try {
-        const nextGroups = await Promise.all(
-          snapshot.docs.map(async (membershipDoc) => {
-            const groupRef = membershipDoc.ref.parent.parent;
-            if (!groupRef) {
-              return null;
-            }
-
-            const [groupSnapshot, membersSnapshot] = await Promise.all([
-              getDoc(doc(db, 'groups', groupRef.id)),
-              getDocs(collection(db, 'groups', groupRef.id, 'members'))
-            ]);
-
-            if (!groupSnapshot.exists()) {
-              return null;
-            }
-
-            const groupData = groupSnapshot.data();
-            return {
-              id: groupSnapshot.id,
-              name: (groupData.name as string) ?? '',
-              description: (groupData.description as string) ?? '',
-              ownerId: (groupData.ownerId as string) ?? '',
-              coOwnerIds: Array.isArray(groupData.coOwnerIds) ? (groupData.coOwnerIds as string[]) : [],
-              createdAt: groupData.createdAt?.toDate?.() ?? new Date(),
-              settings: {
-                photoProofRequired: Boolean(groupData.settings?.photoProofRequired),
-                jarEnabled: Boolean(groupData.settings?.jarEnabled),
-                jarAmount: Number(groupData.settings?.jarAmount ?? 0)
-              },
-              memberCount: membersSnapshot.size
-            } satisfies DashboardGroup;
-          })
-        );
-
-        setGroups(nextGroups.filter((group): group is DashboardGroup => Boolean(group)));
+        const data = await fetchGroups();
+        if (!cancelled) setGroups(data as DashboardGroup[]);
       } catch (error) {
         console.error('Unable to load groups', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    void load();
+    const interval = setInterval(() => void load(), 15_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [user]);
 
   if (loading) {

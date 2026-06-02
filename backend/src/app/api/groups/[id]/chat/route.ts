@@ -24,7 +24,7 @@ const mapMessage = (m: {
   userPhotoURL: m.user?.photoUrl ?? null
 });
 
-// GET /api/groups/[id]/chat?limit=50&before=<id>
+// GET /api/groups/[id]/chat?limit=50&before=<ISO-timestamp>
 export async function GET(req: NextRequest, ctx: RouteContext) {
   try {
     const userId = requireAuth(req);

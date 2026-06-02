@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         if (!actor || !target) return;
         const parts: string[] = [];
         if (body.totalOwed !== undefined) {
-          parts.push(`$${Number(jar.totalOwed).toFixed(2)} owed`);
+          parts.push(`$${jar.totalOwed.toNumber().toFixed(2)} owed`);
         }
         if (body.count !== undefined) {
           parts.push(`${jar.count} miss${jar.count === 1 ? '' : 'es'}`);

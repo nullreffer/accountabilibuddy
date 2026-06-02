@@ -45,7 +45,10 @@ export const useChat = (groupId: string) => {
     setSending(true);
     try {
       const msg = await sendChatMessage(groupId, text.trim());
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
     } finally {
       setSending(false);
     }

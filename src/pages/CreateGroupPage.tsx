@@ -3,6 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { createGroup } from '../lib/api';
 
+const TEMPLATES = [
+  { name: 'Gym Crew', description: 'Going to the gym — hold each other accountable for regular gym sessions.' },
+  { name: 'Running Club', description: 'Running every week — stay consistent with your weekly running goals.' },
+  { name: 'Daily Plank', description: 'Doing a plank every day — build core strength one plank at a time.' },
+  { name: 'Home Chefs', description: 'Cooking once a week — make time to cook a home meal every week.' },
+  { name: 'Plant Parents', description: 'Watering plants twice a week — keep your plants happy and thriving.' },
+  { name: 'Family First', description: 'Checking in on parents once a week — stay connected with the people who matter.' },
+  { name: 'Breathe & Flow', description: 'Breathing and yoga twice a week — prioritise mindfulness and flexibility.' },
+  { name: 'Step Squad', description: 'Walking 5 miles a week — rack up steps and stay active together.' },
+  { name: 'Book Club', description: 'Reading an hour every day — build a daily reading habit, one page at a time.' }
+] as const;
+
 const CreateGroupPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -12,6 +24,11 @@ const CreateGroupPage = () => {
   const [jarAmount, setJarAmount] = useState('5');
   const [photoProofRequired, setPhotoProofRequired] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const applyTemplate = (template: (typeof TEMPLATES)[number]) => {
+    setName(template.name);
+    setDescription(template.description);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,6 +70,25 @@ const CreateGroupPage = () => {
       <Link className="back-link" to="/dashboard">
         ← Back to dashboard
       </Link>
+      <section className="card stack-lg">
+        <div>
+          <p className="eyebrow">Quick start</p>
+          <h2>Pick a template</h2>
+          <p className="helper-text">Choose a template to pre-fill the form, or fill it in yourself below.</p>
+        </div>
+        <div className="checkbox-grid">
+          {TEMPLATES.map((template) => (
+            <button
+              className="button button--secondary button--small"
+              key={template.name}
+              onClick={() => applyTemplate(template)}
+              type="button"
+            >
+              {template.name}
+            </button>
+          ))}
+        </div>
+      </section>
       <section className="card stack-lg">
         <div>
           <p className="eyebrow">Create a group</p>

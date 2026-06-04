@@ -13,6 +13,40 @@ const getClient = () => {
   return { mg: mailgun.client({ username: 'api', key }), domain };
 };
 
+export const sendVerificationEmail = async ({
+  to,
+  code,
+  name
+}: {
+  to: string;
+  code: string;
+  name: string;
+}) => {
+  const client = getClient();
+  if (!client) {
+    console.log(`[DEV] Verification code for ${to}: ${code}`);
+    return;
+  }
+
+  await client.mg.messages.create(client.domain, {
+    from: 'Accountabilibuddy <noreply@accountabilibuddy.app>',
+    to,
+    subject: 'Verify your Accountabilibuddy email',
+    text: `Hi ${name},\n\nYour verification code is: ${code}\n\nThis code expires in 15 minutes.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:480px;margin:0 auto;padding:1.5rem;">
+        <h2 style="color:#4f46e5;">Verify your email</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Enter this code in the app to verify your email address:</p>
+        <div style="font-size:2.5rem;font-weight:800;letter-spacing:0.25em;color:#4f46e5;text-align:center;padding:1.5rem;background:#eef2ff;border-radius:12px;margin:1.5rem 0;">
+          ${code}
+        </div>
+        <p style="color:#6b7280;font-size:0.9rem;">This code expires in 15 minutes. If you didn't sign up for Accountabilibuddy, you can ignore this email.</p>
+      </div>
+    `
+  });
+};
+
 export const sendInviteEmail = async ({
   to,
   groupName,

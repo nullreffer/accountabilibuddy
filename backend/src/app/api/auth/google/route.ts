@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import { NextRequest } from 'next/server';
 import { signToken } from '@/lib/auth';
+import { sendVerificationEmail } from '@/lib/email';
 import { prisma } from '@/lib/prisma';
 import { badRequest, handleError, ok } from '@/lib/response';
 
@@ -34,9 +35,23 @@ export async function POST(req: NextRequest) {
         googleId: payload.sub,
         displayName: payload.name ?? 'AccountabiliBuddy User',
         email: payload.email,
-        photoUrl: payload.picture ?? null
+        photoUrl: payload.picture ?? null,
+        emailVerified: false
       }
     });
+
+    // For unverified users, regenerate code and send email
+    if (!user.emailVerified) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expires = new Date(Date.now() + 15 * 60 * 1000);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { verificationCode: code, verificationExpires: expires }
+      });
+      void sendVerificationEmail({ to: user.email, code, name: user.displayName }).catch((err) =>
+        console.error('Failed to send verification email:', err)
+      );
+    }
 
     const token = signToken({ sub: user.id, email: user.email });
 
@@ -47,7 +62,8 @@ export async function POST(req: NextRequest) {
         displayName: user.displayName,
         email: user.email,
         photoUrl: user.photoUrl,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        emailVerified: user.emailVerified
       }
     });
   } catch (err) {

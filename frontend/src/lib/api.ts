@@ -68,12 +68,19 @@ export interface AuthUser {
   email: string;
   photoUrl: string | null;
   createdAt: string;
+  emailVerified: boolean;
 }
 
 export const authGoogle = (idToken: string) =>
   request<{ token: string; user: AuthUser }>('POST', '/api/auth/google', { idToken });
 
 export const authMe = () => request<AuthUser>('GET', '/api/auth/me');
+
+export const sendVerificationEmail = () =>
+  request<{ message: string }>('POST', '/api/auth/send-verification');
+
+export const verifyEmail = (code: string) =>
+  request<{ verified: boolean }>('POST', '/api/auth/verify-email', { code });
 
 // ---------- Groups ----------
 

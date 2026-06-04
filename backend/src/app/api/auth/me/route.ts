@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
       displayName: user.displayName,
       email: user.email,
       photoUrl: user.photoUrl,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      emailVerified: user.emailVerified
     });
   } catch (err) {
     return handleError(err);

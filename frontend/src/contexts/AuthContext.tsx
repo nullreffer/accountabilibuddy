@@ -21,6 +21,7 @@ interface AuthContextValue {
   loading: boolean;
   signIn: (idToken: string) => Promise<void>;
   signOut: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -57,9 +58,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const updated = await authMe();
+      setUser(updated);
+    } catch {
+      clearToken();
+      setUser(null);
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut }),
-    [loading, signIn, signOut, user]
+    () => ({ user, loading, signIn, signOut, refreshUser }),
+    [loading, refreshUser, signIn, signOut, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -10,6 +10,9 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write src"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "react": "^18.2.0",
@@ -29,8 +32,8 @@
     "prettier": "^3.1.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
-    "vite-plugin-pwa": "^0.20.0",
-    "workbox-build": "^7.0.0",
-    "workbox-window": "^7.0.0"
+    "vite-plugin-pwa": "^0.21.2",
+    "workbox-build": "^7.3.0",
+    "workbox-window": "^7.3.0"
   }
 }

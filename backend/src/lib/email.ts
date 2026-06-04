@@ -1,16 +1,16 @@
-import sendgrid from '@sendgrid/mail';
+import FormData from 'form-data';
+import Mailgun from 'mailgun.js';
 
-let initialized = false;
+const mailgun = new Mailgun(FormData);
 
-const init = () => {
-  if (initialized) return;
-  const key = process.env.SENDGRID_API_KEY;
-  if (!key) {
-    console.warn('SENDGRID_API_KEY not configured – email disabled');
-    return;
+const getClient = () => {
+  const key = process.env.MAILGUN_API_KEY;
+  const domain = process.env.MAILGUN_DOMAIN;
+  if (!key || !domain) {
+    console.warn('MAILGUN_API_KEY or MAILGUN_DOMAIN not configured – email disabled');
+    return null;
   }
-  sendgrid.setApiKey(key);
-  initialized = true;
+  return { mg: mailgun.client({ username: 'api', key }), domain };
 };
 
 export const sendInviteEmail = async ({
@@ -24,15 +24,15 @@ export const sendInviteEmail = async ({
   inviteUrl: string;
   inviterName: string;
 }) => {
-  init();
-  if (!initialized) {
-    console.warn('Email not sent – SendGrid not configured');
+  const client = getClient();
+  if (!client) {
+    console.warn('Email not sent – Mailgun not configured');
     return;
   }
 
-  await sendgrid.send({
+  await client.mg.messages.create(client.domain, {
+    from: 'Accountabilibuddy <noreply@accountabilibuddy.app>',
     to,
-    from: { email: 'noreply@accountabilibuddy.app', name: 'Accountabilibuddy' },
     subject: `${inviterName} invited you to join ${groupName}`,
     text: `${inviterName} invited you to join ${groupName}. Join here: ${inviteUrl}`,
     html: `

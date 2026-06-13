@@ -16,7 +16,7 @@ import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
 import { createCheckin, updateGroup, deleteGroup } from '../lib/api';
 
-const tabs = ['overview', 'chat', 'feed', 'chart', 'schedules', 'members', 'jar', 'invites', 'settings'] as const;
+const tabs = ['overview', 'chat', 'chart', 'schedules', 'jar'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'];
 
@@ -31,6 +31,7 @@ const GroupPage = () => {
   const { schedules, loading: schedulesLoading } = useSchedules(groupId);
   const { checkins, loading: checkinsLoading } = useCheckins(groupId, 50);
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('overview');
+  const [activeModal, setActiveModal] = useState<'members' | 'invites' | 'settings' | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState('manual');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [checkinLoading, setCheckinLoading] = useState(false);
@@ -212,16 +213,32 @@ const GroupPage = () => {
           <h1>{group.name}</h1>
           <p className="hero-card__text">{group.description || 'No description yet.'}</p>
         </div>
-        <div className="hero-card__stats">
-          <span className="badge badge--neutral">{members.length} members</span>
-          <span className="badge badge--success">Your role: {member.role}</span>
+        <div className="group-actions">
+          <div className="hero-card__stats">
+            <span className="badge badge--neutral">{members.length} members</span>
+            <span className="badge badge--success">Your role: {member.role}</span>
+          </div>
+          <div className="group-actions__icons">
+            <button aria-label="Open members" className="icon-btn" onClick={() => setActiveModal('members')} title="Members" type="button">
+              👥
+            </button>
+            {canManage ? (
+              <button aria-label="Open invites" className="icon-btn" onClick={() => setActiveModal('invites')} title="Invites" type="button">
+                ✉️
+              </button>
+            ) : null}
+            {canManage ? (
+              <button aria-label="Open settings" className="icon-btn" onClick={() => setActiveModal('settings')} title="Settings" type="button">
+                ⚙️
+              </button>
+            ) : null}
+          </div>
         </div>
       </section>
 
       <div className="tab-strip" role="tablist" aria-label="Group sections">
         {tabs
           .filter((tab) => (tab === 'jar' ? group.settings.jarEnabled : true))
-          .filter((tab) => (tab === 'settings' ? canManage : true))
           .map((tab) => (
             <button
               className={`tab-strip__button${activeTab === tab ? ' tab-strip__button--active' : ''}`}
@@ -305,8 +322,18 @@ const GroupPage = () => {
         </section>
       ) : null}
 
-      {activeTab === 'chat' ? <ChatPanel groupId={groupId} /> : null}
-      {activeTab === 'feed' ? <CheckinFeed groupId={groupId} /> : null}
+      {activeTab === 'chat' ? (
+        <section className="grid grid--two-thirds">
+          <ChatPanel groupId={groupId} />
+          <section className="card stack-md">
+            <div>
+              <p className="eyebrow">Notifications</p>
+              <h2>Recent activity</h2>
+            </div>
+            <CheckinFeed groupId={groupId} />
+          </section>
+        </section>
+      ) : null}
       {activeTab === 'chart' ? <GroupHistoryChart groupId={groupId} /> : null}
 
       {activeTab === 'schedules' ? (
@@ -388,86 +415,101 @@ const GroupPage = () => {
         </section>
       ) : null}
 
-      {activeTab === 'members' ? <MemberList currentUserRole={member.role} groupId={groupId} /> : null}
       {activeTab === 'jar' && group.settings.jarEnabled ? <JarDisplay groupId={groupId} isOwner={isOwner} /> : null}
-      {activeTab === 'invites' ? <InviteManager groupId={groupId} isOwner={canManage} /> : null}
-
-      {activeTab === 'settings' ? (
-        <section className="stack-lg">
-          <form className="card form-grid" onSubmit={(event) => void handleSaveSettings(event)}>
-            <div className="field field--full">
-              <p className="eyebrow">Settings</p>
-              <h2>Adjust your group defaults</h2>
-            </div>
-            <label className="field">
-              <span>Name</span>
-              <input className="input" onChange={(event) => setSettingsName(event.target.value)} value={settingsName} />
-            </label>
-            <label className="field field--full">
-              <span>Description</span>
-              <textarea
-                className="input input--textarea"
-                onChange={(event) => setSettingsDescription(event.target.value)}
-                rows={4}
-                value={settingsDescription}
-              />
-            </label>
-            <label className="switch-card field--full">
-              <input
-                checked={settingsJarEnabled}
-                onChange={(event) => setSettingsJarEnabled(event.target.checked)}
-                type="checkbox"
-              />
+      {activeModal ? (
+        <div aria-modal="true" className="modal-backdrop" onClick={() => setActiveModal(null)} role="dialog">
+          <section className="modal-sheet card stack-lg" onClick={(event) => event.stopPropagation()}>
+            <div className="card__header">
               <div>
-                <strong>Enable jar</strong>
-                <p>Track missed check-ins with a per-miss amount.</p>
+                <p className="eyebrow">
+                  {activeModal === 'members' ? 'Members' : activeModal === 'invites' ? 'Invites' : 'Settings'}
+                </p>
+                <h2>
+                  {activeModal === 'members' ? 'Manage members' : activeModal === 'invites' ? 'Invite people' : 'Group settings'}
+                </h2>
               </div>
-            </label>
-            {settingsJarEnabled ? (
-              <label className="field">
-                <span>Jar amount</span>
-                <input
-                  className="input"
-                  min="0.01"
-                  onChange={(event) => setSettingsJarAmount(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={settingsJarAmount}
-                />
-              </label>
-            ) : null}
-            <label className="switch-card field--full">
-              <input
-                checked={settingsPhotoProof}
-                onChange={(event) => setSettingsPhotoProof(event.target.checked)}
-                type="checkbox"
-              />
-              <div>
-                <strong>Require photo proof</strong>
-                <p>Add extra accountability by requiring image evidence.</p>
-              </div>
-            </label>
-            <div className="form-actions field--full">
-              <button className="button button--primary" disabled={settingsSaving} type="submit">
-                {settingsSaving ? 'Saving...' : 'Save Settings'}
+              <button aria-label="Close modal" className="icon-btn" onClick={() => setActiveModal(null)} type="button">
+                ✕
               </button>
-              <Link className="button button--ghost" to={`/group/${groupId}/settings`}>
-                Open full settings page
-              </Link>
             </div>
-          </form>
 
-          <section className="card danger-zone stack-md">
-            <div>
-              <p className="eyebrow">Danger zone</p>
-              <h2>Delete group</h2>
-              <p>This permanently removes the group document and its subcollections.</p>
-            </div>
-            <button className="button button--danger" disabled={!isOwner} onClick={() => void handleDeleteGroup()}>
-              Delete Group
-            </button>
+            {activeModal === 'members' ? <MemberList currentUserRole={member.role} groupId={groupId} /> : null}
+            {activeModal === 'invites' ? <InviteManager groupId={groupId} isOwner={canManage} /> : null}
+            {activeModal === 'settings' ? (
+              <section className="stack-lg">
+                <form className="form-grid" onSubmit={(event) => void handleSaveSettings(event)}>
+                  <label className="field">
+                    <span>Name</span>
+                    <input className="input" onChange={(event) => setSettingsName(event.target.value)} value={settingsName} />
+                  </label>
+                  <label className="field field--full">
+                    <span>Description</span>
+                    <textarea
+                      className="input input--textarea"
+                      onChange={(event) => setSettingsDescription(event.target.value)}
+                      rows={4}
+                      value={settingsDescription}
+                    />
+                  </label>
+                  <label className="switch-card field--full">
+                    <input
+                      checked={settingsJarEnabled}
+                      onChange={(event) => setSettingsJarEnabled(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <div>
+                      <strong>Enable jar</strong>
+                      <p>Track missed check-ins with a per-miss amount.</p>
+                    </div>
+                  </label>
+                  {settingsJarEnabled ? (
+                    <label className="field">
+                      <span>Jar amount</span>
+                      <input
+                        className="input"
+                        min="0.01"
+                        onChange={(event) => setSettingsJarAmount(event.target.value)}
+                        step="0.01"
+                        type="number"
+                        value={settingsJarAmount}
+                      />
+                    </label>
+                  ) : null}
+                  <label className="switch-card field--full">
+                    <input
+                      checked={settingsPhotoProof}
+                      onChange={(event) => setSettingsPhotoProof(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <div>
+                      <strong>Require photo proof</strong>
+                      <p>Add extra accountability by requiring image evidence.</p>
+                    </div>
+                  </label>
+                  <div className="form-actions field--full">
+                    <button className="button button--primary" disabled={settingsSaving} type="submit">
+                      {settingsSaving ? 'Saving...' : 'Save Settings'}
+                    </button>
+                    <Link className="button button--ghost" to={`/group/${groupId}/settings`}>
+                      Open full settings page
+                    </Link>
+                  </div>
+                </form>
+
+                <section className="card danger-zone stack-md">
+                  <div>
+                    <p className="eyebrow">Danger zone</p>
+                    <h2>Delete group</h2>
+                    <p>This permanently removes the group document and its subcollections.</p>
+                  </div>
+                  <button className="button button--danger" disabled={!isOwner} onClick={() => void handleDeleteGroup()}>
+                    Delete Group
+                  </button>
+                </section>
+              </section>
+            ) : null}
           </section>
-        </section>
+        </div>
       ) : null}
     </div>
   );

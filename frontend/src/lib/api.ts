@@ -76,6 +76,9 @@ export const authGoogle = (idToken: string) =>
 
 export const authMe = () => request<AuthUser>('GET', '/api/auth/me');
 
+export const updateAuthMe = (data: { displayName: string; photoUrl?: string }) =>
+  request<AuthUser>('PATCH', '/api/auth/me', data);
+
 export const sendVerificationEmail = () =>
   request<{ message: string }>('POST', '/api/auth/send-verification');
 

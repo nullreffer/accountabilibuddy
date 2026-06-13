@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarFallback } from '../lib/avatar';
+import BrandMark from './BrandMark';
 import InstallPrompt from './InstallPrompt';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
     try {
       return (localStorage.getItem('theme-mode') as 'system' | 'light' | 'dark') || 'system';
@@ -41,17 +43,34 @@ const Navbar = () => {
   // Close mobile menu on resize to desktop
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth > 768) setMenuOpen(false);
+      if (window.innerWidth > 1024) {
+        setNavMenuOpen(false);
+      }
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `navbar__link${isActive ? ' navbar__link--active' : ''}`;
+  const navMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `mobile-menu__link${isActive ? ' mobile-menu__link--active' : ''}`;
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (navMenuRef.current && !navMenuRef.current.contains(target)) {
+        setNavMenuOpen(false);
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const menuLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `menu-dropdown__link${isActive ? ' menu-dropdown__link--active' : ''}`;
 
   const cycleTheme = () => {
     setThemeMode((current) => {
@@ -67,20 +86,41 @@ const Navbar = () => {
   return (
     <header className="navbar">
       <div className="navbar__brand">
-        <Link to="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span className="navbar__logo">AB</span>
+        <Link className="navbar__brand-link" to="/dashboard">
+          <BrandMark className="navbar__logo" />
           <div>
             <p className="navbar__title">Accountabilibuddy</p>
             <p className="navbar__subtitle">Hold each other accountable.</p>
           </div>
         </Link>
+        <div className="menu-trigger" ref={navMenuRef}>
+          <button
+            aria-expanded={navMenuOpen}
+            aria-label="Open navigation menu"
+            className="icon-btn icon-btn--menu"
+            onClick={() => {
+              setNavMenuOpen((current) => !current);
+              setProfileMenuOpen(false);
+            }}
+            type="button"
+          >
+            {navMenuOpen ? '✕' : '☰'}
+          </button>
+          {navMenuOpen ? (
+            <nav className="menu-dropdown menu-dropdown--nav" aria-label="Primary navigation">
+              <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/dashboard">
+                Dashboard
+              </NavLink>
+              <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/create-group">
+                Create group
+              </NavLink>
+              <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/profile">
+                Profile settings
+              </NavLink>
+            </nav>
+          ) : null}
+        </div>
       </div>
-
-      {/* Desktop navigation */}
-      <nav className="navbar__links" aria-label="Primary navigation">
-        <NavLink className={navLinkClass} to="/dashboard">Dashboard</NavLink>
-        <NavLink className={navLinkClass} to="/profile">Profile</NavLink>
-      </nav>
 
       <div className="navbar__actions">
         <InstallPrompt compact />
@@ -94,59 +134,50 @@ const Navbar = () => {
           {themeIcon}
         </button>
 
-        {/* Desktop profile */}
-        <div className="navbar__profile">
-          <Link to="/profile" aria-label="View profile">
-            <img
-              className="avatar avatar--small"
-              src={user?.photoUrl || getAvatarFallback(user?.displayName || 'AB')}
-              alt={user?.displayName || 'Profile'}
-            />
-          </Link>
-          <button className="button button--ghost button--small" onClick={() => void signOut()}>
-            Sign out
-          </button>
-        </div>
-
-        {/* Mobile hamburger */}
-        <button
-          className="hamburger"
-          onClick={() => setMenuOpen(o => !o)}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? '✕' : '☰'}
-        </button>
-      </div>
-
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <nav className="mobile-menu" aria-label="Mobile navigation">
-          <div className="mobile-menu__user">
-            <img
-              className="avatar avatar--small"
-              src={user?.photoUrl || getAvatarFallback(user?.displayName || 'AB')}
-              alt={user?.displayName || 'Profile'}
-            />
-            <div>
-              <p className="mobile-menu__name">{user?.displayName}</p>
-              <p className="mobile-menu__email">{user?.email}</p>
-            </div>
-          </div>
-          <NavLink className={mobileLinkClass} to="/dashboard" onClick={() => setMenuOpen(false)}>
-            Dashboard
-          </NavLink>
-          <NavLink className={mobileLinkClass} to="/profile" onClick={() => setMenuOpen(false)}>
-            Profile
-          </NavLink>
+        <div className="menu-trigger" ref={profileMenuRef}>
           <button
-            className="mobile-menu__link mobile-menu__signout"
-            onClick={() => { void signOut(); setMenuOpen(false); }}
+            aria-expanded={profileMenuOpen}
+            aria-label="Open profile menu"
+            className="avatar-button"
+            onClick={() => {
+              setProfileMenuOpen((current) => !current);
+              setNavMenuOpen(false);
+            }}
+            type="button"
           >
-            Sign out
+            <img
+              className="avatar avatar--small"
+              src={user?.photoUrl || getAvatarFallback(user?.displayName || 'AB')}
+              alt={user?.displayName || 'Profile'}
+            />
           </button>
-        </nav>
-      )}
+
+          {profileMenuOpen ? (
+            <div className="menu-dropdown menu-dropdown--profile" role="menu">
+              <div className="menu-dropdown__user">
+                <p className="menu-dropdown__name">{user?.displayName}</p>
+                <p className="menu-dropdown__email">{user?.email}</p>
+              </div>
+              <NavLink className={menuLinkClass} onClick={() => setProfileMenuOpen(false)} to="/profile">
+                Profile settings
+              </NavLink>
+              <button className="menu-dropdown__link" onClick={cycleTheme} type="button">
+                {themeLabel}
+              </button>
+              <button
+                className="menu-dropdown__link menu-dropdown__link--danger"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  void signOut();
+                }}
+                type="button"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </header>
   );
 };

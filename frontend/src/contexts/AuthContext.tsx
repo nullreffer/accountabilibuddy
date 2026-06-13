@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -13,6 +14,7 @@ import {
   clearToken,
   getToken,
   setToken,
+  updateAuthMe,
   type AuthUser
 } from '../lib/api';
 
@@ -22,6 +24,7 @@ interface AuthContextValue {
   signIn: (idToken: string) => Promise<void>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
+  updateProfile: (data: { displayName: string; photoUrl?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -68,9 +71,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const updateProfile = useCallback(async (data: { displayName: string; photoUrl?: string }) => {
+    const updated = await updateAuthMe(data);
+    setUser(updated);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut, refreshUser }),
-    [loading, refreshUser, signIn, signOut, user]
+    () => ({ user, loading, signIn, signOut, refreshUser, updateProfile }),
+    [loading, refreshUser, signIn, signOut, updateProfile, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

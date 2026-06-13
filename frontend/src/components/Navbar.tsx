@@ -7,20 +7,36 @@ import InstallPrompt from './InstallPrompt';
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
     try {
-      return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-    } catch {
-      return 'light';
+      return (localStorage.getItem('theme-mode') as 'system' | 'light' | 'dark') || 'system';
+    } catch (error) {
+      void error;
+      return 'system';
     }
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const resolvedTheme = themeMode === 'system' ? (mediaQuery.matches ? 'dark' : 'light') : themeMode;
+      document.documentElement.setAttribute('data-theme', resolvedTheme);
+    };
+
+    applyTheme();
+    const handleChange = () => applyTheme();
+    mediaQuery.addEventListener('change', handleChange);
+
     try {
-      localStorage.setItem('theme', theme);
-    } catch {}
-  }, [theme]);
+      localStorage.setItem('theme-mode', themeMode);
+    } catch (error) {
+      void error;
+    }
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, [themeMode]);
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -36,6 +52,17 @@ const Navbar = () => {
 
   const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
     `mobile-menu__link${isActive ? ' mobile-menu__link--active' : ''}`;
+
+  const cycleTheme = () => {
+    setThemeMode((current) => {
+      if (current === 'system') return 'dark';
+      if (current === 'dark') return 'light';
+      return 'system';
+    });
+  };
+
+  const themeLabel = themeMode === 'system' ? 'Use dark theme' : themeMode === 'dark' ? 'Use light theme' : 'Use browser theme';
+  const themeIcon = themeMode === 'system' ? '🖥️' : themeMode === 'dark' ? '🌙' : '☀️';
 
   return (
     <header className="navbar">
@@ -60,10 +87,11 @@ const Navbar = () => {
 
         <button
           className="icon-btn"
-          onClick={() => setTheme(t => (t === 'light' ? 'dark' : 'light'))}
-          aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          onClick={cycleTheme}
+          aria-label={themeLabel}
+          title={themeLabel}
         >
-          {theme === 'light' ? '🌙' : '☀️'}
+          {themeIcon}
         </button>
 
         {/* Desktop profile */}
@@ -124,4 +152,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

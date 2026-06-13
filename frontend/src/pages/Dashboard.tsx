@@ -62,7 +62,7 @@ const Dashboard = () => {
       {groups.length ? (
         <section className="group-grid">
           {groups.map((group) => (
-            <article className="group-card" key={group.id}>
+            <Link className="group-card group-card--link" key={group.id} to={`/group/${group.id}`}>
               <div className="group-card__body">
                 <div className="group-card__meta">
                   <span className="badge badge--neutral">{group.memberCount} members</span>
@@ -72,11 +72,9 @@ const Dashboard = () => {
                 <p>{group.description || 'No description yet.'}</p>
               </div>
               <div className="group-card__footer">
-                <Link className="button button--ghost" to={`/group/${group.id}`}>
-                  View
-                </Link>
+                <span className="button button--ghost">Open group</span>
               </div>
-            </article>
+            </Link>
           ))}
         </section>
       ) : (

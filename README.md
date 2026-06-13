@@ -24,7 +24,7 @@ accountabilibuddy/
 │       ├── app/api/       # Next.js route handlers
 │       ├── jobs/          # node-cron scheduler
 │       └── lib/           # auth, push, email helpers
-├── railway.json           # Railway config — frontend service
+├── frontend/railway.json  # Railway config — frontend service
 └── backend/railway.json   # Railway config — backend service
 ```
 
@@ -103,3 +103,15 @@ Deploy as two separate services from the same GitHub repo:
    ```bash
    railway run --service backend npx prisma migrate deploy
    ```
+
+### GitHub Actions auto deploy on merge
+
+This repository now includes `.github/workflows/railway-deploy.yml`, which deploys both services whenever `main` is updated.
+
+Configure these GitHub settings before relying on it:
+
+- **Secret:** `RAILWAY_TOKEN`
+- **Repository variable:** `RAILWAY_FRONTEND_SERVICE`
+- **Repository variable:** `RAILWAY_BACKEND_SERVICE`
+
+Each service variable should be set to the Railway service name or service ID for the existing frontend/backend service.

@@ -3,11 +3,17 @@ import { NextRequest } from 'next/server';
 
 const SECRET = process.env.JWT_SECRET;
 
-if (!SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('JWT_SECRET environment variable is required');
-}
+const getJwtSecret = () => {
+  if (SECRET) {
+    return SECRET;
+  }
 
-const jwtSecret = SECRET ?? 'dev-secret-change-me';
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+
+  return 'dev-secret-change-me';
+};
 
 export interface JwtPayload {
   sub: string; // user id
@@ -15,10 +21,10 @@ export interface JwtPayload {
 }
 
 export const signToken = (payload: JwtPayload): string =>
-  jwt.sign(payload, jwtSecret, { expiresIn: '30d' });
+  jwt.sign(payload, getJwtSecret(), { expiresIn: '30d' });
 
 export const verifyToken = (token: string): JwtPayload => {
-  const decoded = jwt.verify(token, jwtSecret);
+  const decoded = jwt.verify(token, getJwtSecret());
   if (typeof decoded === 'string' || !decoded.sub || !decoded.email) {
     throw new Error('Invalid token');
   }

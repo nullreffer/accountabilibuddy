@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import CreateGroupForm from '../components/CreateGroupForm';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchGroups, type Group } from '../lib/api';
@@ -10,8 +11,10 @@ interface DashboardGroup extends Group {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<DashboardGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -48,19 +51,16 @@ const Dashboard = () => {
 
   return (
     <div className="page page--wide stack-xl">
-      <section className="hero-card">
+      <section className="card dashboard-header">
         <div>
           <p className="eyebrow">Dashboard</p>
           <h1>Your accountability groups</h1>
-          <p className="hero-card__text">Track progress, keep momentum, and celebrate every completed check-in.</p>
+          <p className="hero-card__text">Pick a group and jump straight back into your check-ins, chat, and progress.</p>
         </div>
-        <Link className="button button--primary" to="/create-group">
-          Create New Group
-        </Link>
       </section>
 
       {groups.length ? (
-        <section className="group-grid">
+        <section className="dashboard-group-list" aria-label="Your groups">
           {groups.map((group) => (
             <Link className="group-card group-card--link" key={group.id} to={`/group/${group.id}`}>
               <div className="group-card__body">
@@ -81,11 +81,36 @@ const Dashboard = () => {
         <div className="empty-state empty-state--centered">
           <h2>No groups yet</h2>
           <p>Create your first group to start checking in together.</p>
-          <Link className="button button--primary" to="/create-group">
+          <button className="button button--primary" onClick={() => setCreateModalOpen(true)} type="button">
             Create your first group
-          </Link>
+          </button>
         </div>
       )}
+
+      <button
+        aria-label="Create new group"
+        className="fab"
+        onClick={() => setCreateModalOpen(true)}
+        title="Create new group"
+        type="button"
+      >
+        +
+      </button>
+
+      {createModalOpen ? (
+        <div aria-modal="true" className="modal-backdrop" onClick={() => setCreateModalOpen(false)} role="dialog">
+          <section className="modal-sheet modal-sheet--form" onClick={(event) => event.stopPropagation()}>
+            <CreateGroupForm
+              onCancel={() => setCreateModalOpen(false)}
+              onCreated={(groupId) => {
+                setCreateModalOpen(false);
+                navigate(`/group/${groupId}`);
+              }}
+              submitLabel="Create group"
+            />
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 };

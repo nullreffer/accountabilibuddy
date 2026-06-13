@@ -21,7 +21,7 @@ self.addEventListener('push', (event) => {
 
   let title = 'Accountabilibuddy';
   let body = 'You have a new notification.';
-  let icon = '/icons/icon-192.png';
+  let icon = '/icons/icon.svg';
 
   try {
     const data = event.data.json() as { title?: string; body?: string; icon?: string };
@@ -36,7 +36,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body,
       icon,
-      badge: '/icons/icon-192.png'
+      badge: '/icons/icon.svg'
     })
   );
 });

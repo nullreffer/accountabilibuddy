@@ -29,8 +29,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy frontend
-        working-directory: frontend
-        run: railway up --service "$RAILWAY_FRONTEND_SERVICE" --detach
+        run: railway up ./frontend --path-as-root --service "$RAILWAY_FRONTEND_SERVICE" --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_FRONTEND_SERVICE: ${{ vars.RAILWAY_FRONTEND_SERVICE }}
@@ -53,8 +52,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy backend
-        working-directory: backend
-        run: railway up --service "$RAILWAY_BACKEND_SERVICE" --detach
+        run: railway up ./backend --path-as-root --service "$RAILWAY_BACKEND_SERVICE" --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_BACKEND_SERVICE: ${{ vars.RAILWAY_BACKEND_SERVICE }}

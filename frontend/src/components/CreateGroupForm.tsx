@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { createGroup, createSchedule } from '../lib/api';
 
-type Frequency = 'daily' | 'weekly' | 'custom';
+type Frequency = 'daily' | 'weekly' | 'monthly';
 
 interface ScheduleDraft {
   name: string;
@@ -77,9 +77,14 @@ const TEMPLATES: Template[] = [
 ];
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_DAY_LABELS = Array.from({ length: 31 }, (_, index) => index + 1);
 
 const formatScheduleLabel = (schedule: ScheduleDraft) => {
   if (schedule.frequency === 'daily') return `${schedule.name} · Daily at ${schedule.time}`;
+  if (schedule.frequency === 'monthly') {
+    const days = schedule.daysOfWeek.join(', ');
+    return `${schedule.name} · Monthly on day ${days} at ${schedule.time}`;
+  }
   const days = schedule.daysOfWeek.map((day) => DAY_LABELS[day]).join(', ');
   return `${schedule.name} · ${days} at ${schedule.time}`;
 };
@@ -121,7 +126,7 @@ const CreateGroupForm = ({
 
   const toggleDay = (day: number) => {
     setScheduleDays((previous) =>
-      previous.includes(day) ? previous.filter((value) => value !== day) : [...previous, day]
+      previous.includes(day) ? previous.filter((value) => value !== day) : [...previous, day].sort((a, b) => a - b)
     );
   };
 
@@ -131,8 +136,8 @@ const CreateGroupForm = ({
       return;
     }
 
-    if (scheduleFrequency === 'weekly' && scheduleDays.length === 0) {
-      window.alert('Pick at least one day for weekly schedules.');
+    if ((scheduleFrequency === 'weekly' || scheduleFrequency === 'monthly') && scheduleDays.length === 0) {
+      window.alert(`Pick at least one ${scheduleFrequency === 'monthly' ? 'day of month' : 'day of week'}.`);
       return;
     }
 
@@ -336,6 +341,7 @@ const CreateGroupForm = ({
               >
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
               </select>
             </label>
             <label className="field">
@@ -344,21 +350,24 @@ const CreateGroupForm = ({
             </label>
           </div>
 
-          {scheduleFrequency === 'weekly' ? (
+          {scheduleFrequency === 'weekly' || scheduleFrequency === 'monthly' ? (
             <div className="field field--full">
-              <span className="field__label">Days</span>
+              <span className="field__label">
+                {scheduleFrequency === 'monthly' ? 'Days of month' : 'Days of week'}
+              </span>
               <div className="day-picker">
-                {DAY_LABELS.map((label, day) => (
+                {(scheduleFrequency === 'monthly' ? MONTH_DAY_LABELS : DAY_LABELS).map((label, day) => (
                   <button
                     key={label}
                     type="button"
-                    className={`day-pill${scheduleDays.includes(day) ? ' day-pill--active' : ''}`}
-                    onClick={() => toggleDay(day)}
+                    className={`day-pill${scheduleDays.includes(scheduleFrequency === 'monthly' ? day + 1 : day) ? ' day-pill--active' : ''}`}
+                    onClick={() => toggleDay(scheduleFrequency === 'monthly' ? day + 1 : day)}
                   >
                     {label}
                   </button>
                 ))}
               </div>
+              <p className="helper-text">Select one or more days.</p>
             </div>
           ) : null}
 

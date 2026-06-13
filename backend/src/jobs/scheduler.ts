@@ -41,6 +41,7 @@ const getLocalParts = (date: Date, timezone = 'UTC') => {
   return {
     hour: Number(find('hour')),
     minute: Number(find('minute')),
+    dayOfMonth: Number(find('day')),
     weekday: weekdayMap[find('weekday')] ?? date.getUTCDay(),
     dateKey: `${find('year')}-${find('month')}-${find('day')}`
   };
@@ -55,6 +56,10 @@ const isScheduleDue = (schedule: ScheduleRow, now = new Date()) => {
 
   if (schedule.frequency === 'weekly' || schedule.frequency === 'custom') {
     return schedule.daysOfWeek.includes(local.weekday);
+  }
+
+  if (schedule.frequency === 'monthly') {
+    return schedule.daysOfWeek.includes(local.dayOfMonth);
   }
 
   return true;

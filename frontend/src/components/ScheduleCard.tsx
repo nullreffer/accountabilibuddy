@@ -11,9 +11,16 @@ const ScheduleCard = ({
   onDelete: () => void;
   canEdit: boolean;
 }) => {
-  const dayText = schedule.daysOfWeek.length
-    ? schedule.daysOfWeek.map((day) => dayLabels[day]).join(', ')
-    : 'Every day';
+  const dayText =
+    schedule.frequency === 'daily'
+      ? 'Every day'
+      : schedule.frequency === 'monthly'
+        ? schedule.daysOfWeek.length
+          ? `Day ${schedule.daysOfWeek.join(', ')}`
+          : 'Day not set'
+        : schedule.daysOfWeek.length
+          ? schedule.daysOfWeek.map((day) => dayLabels[day]).join(', ')
+          : 'Every day';
 
   return (
     <article className="schedule-card">

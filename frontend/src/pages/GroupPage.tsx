@@ -18,6 +18,7 @@ import { createCheckin, updateGroup, deleteGroup } from '../lib/api';
 
 const tabs = ['overview', 'chat', 'chart', 'schedules', 'jar'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const monthDays = Array.from({ length: 31 }, (_, index) => index + 1);
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'];
 
 const todayKey = () => new Date().toISOString().split('T')[0];
@@ -37,7 +38,7 @@ const GroupPage = () => {
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'custom'>('daily');
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
   const [time, setTime] = useState('09:00');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
@@ -107,7 +108,7 @@ const GroupPage = () => {
     }
 
     if (frequency !== 'daily' && !daysOfWeek.length) {
-      window.alert('Pick at least one day for weekly or custom schedules.');
+      window.alert(`Pick at least one ${frequency === 'monthly' ? 'day of month' : 'day of week'}.`);
       return;
     }
 
@@ -358,19 +359,23 @@ const GroupPage = () => {
               </label>
               <label className="field">
                 <span>Frequency</span>
-                <select className="input" onChange={(event) => setFrequency(event.target.value as 'daily' | 'weekly' | 'custom')} value={frequency}>
+                <select className="input" onChange={(event) => setFrequency(event.target.value as 'daily' | 'weekly' | 'monthly' | 'custom')} value={frequency}>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
-                  <option value="custom">Custom</option>
+                  <option value="monthly">Monthly</option>
                 </select>
               </label>
-              {(frequency === 'weekly' || frequency === 'custom') ? (
+              {(frequency === 'weekly' || frequency === 'monthly') ? (
                 <div className="field field--full">
-                  <span>Days of week</span>
+                  <span>{frequency === 'monthly' ? 'Days of month' : 'Days of week'}</span>
                   <div className="checkbox-grid">
-                    {dayNames.map((label, index) => (
+                    {(frequency === 'monthly' ? monthDays : dayNames).map((label, index) => (
                       <label className="checkbox-pill" key={label}>
-                        <input checked={daysOfWeek.includes(index)} onChange={() => toggleDay(index)} type="checkbox" />
+                        <input
+                          checked={daysOfWeek.includes(frequency === 'monthly' ? index + 1 : index)}
+                          onChange={() => toggleDay(frequency === 'monthly' ? index + 1 : index)}
+                          type="checkbox"
+                        />
                         <span>{label}</span>
                       </label>
                     ))}

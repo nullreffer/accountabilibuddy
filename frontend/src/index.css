@@ -145,6 +145,12 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
 }
 
 a {
@@ -216,15 +222,21 @@ a {
   position: sticky;
   top: 0;
   z-index: 10;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   padding: 1rem 1.5rem;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .navbar__title {
   font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .navbar__subtitle,
@@ -247,6 +259,15 @@ a {
   gap: 0.75rem;
   text-decoration: none;
   color: inherit;
+  min-width: 0;
+}
+
+.navbar__brand-link--center {
+  justify-self: center;
+}
+
+.navbar__brand-text {
+  min-width: 0;
 }
 
 .navbar__logo,
@@ -750,7 +771,6 @@ a {
 }
 
 @media (max-width: 900px) {
-  .navbar,
   .hero-card,
   .member-card,
   .card__header {
@@ -769,8 +789,7 @@ a {
   }
 
   .navbar__actions {
-    width: 100%;
-    justify-content: space-between;
+    justify-self: end;
   }
 }
 
@@ -839,6 +858,10 @@ a {
   position: relative;
 }
 
+.navbar__menu-trigger {
+  justify-self: start;
+}
+
 .icon-btn--menu {
   font-size: 1.35rem;
 }
@@ -904,13 +927,21 @@ a {
     display: none;
   }
 
-  .navbar__brand {
-    flex: 1;
+  .navbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .navbar__actions {
-    width: auto;
-    justify-content: flex-end;
+  .navbar__title {
+    font-size: 0.88rem;
+  }
+
+  .navbar__brand-link {
+    gap: 0.45rem;
+  }
+
+  .navbar__logo {
+    width: 2.2rem;
+    height: 2.2rem;
   }
 
   .menu-dropdown--nav {

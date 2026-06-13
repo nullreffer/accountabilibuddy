@@ -85,43 +85,40 @@ const Navbar = () => {
 
   return (
     <header className="navbar">
-      <div className="navbar__brand">
-        <Link className="navbar__brand-link" to="/dashboard">
-          <BrandMark className="navbar__logo" />
-          <div>
-            <p className="navbar__title">Accountabilibuddy</p>
-            <p className="navbar__subtitle">Hold each other accountable.</p>
-          </div>
-        </Link>
-        <div className="menu-trigger" ref={navMenuRef}>
-          <button
-            aria-expanded={navMenuOpen}
-            aria-label="Open navigation menu"
-            className="icon-btn icon-btn--menu"
-            onClick={() => {
-              setNavMenuOpen((current) => !current);
-              setProfileMenuOpen(false);
-            }}
-            type="button"
-          >
-            {navMenuOpen ? '✕' : '☰'}
-          </button>
-          {navMenuOpen ? (
-            <nav className="menu-dropdown menu-dropdown--nav" aria-label="Primary navigation">
-              <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/dashboard">
-                Dashboard
-              </NavLink>
-              <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/create-group">
-                Create group
-              </NavLink>
-              <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/profile">
-                Profile settings
-              </NavLink>
-            </nav>
-          ) : null}
-        </div>
+      <div className="menu-trigger navbar__menu-trigger" ref={navMenuRef}>
+        <button
+          aria-expanded={navMenuOpen}
+          aria-label="Open navigation menu"
+          className="icon-btn icon-btn--menu"
+          onClick={() => {
+            setNavMenuOpen((current) => !current);
+            setProfileMenuOpen(false);
+          }}
+          type="button"
+        >
+          {navMenuOpen ? '✕' : '☰'}
+        </button>
+        {navMenuOpen ? (
+          <nav className="menu-dropdown menu-dropdown--nav" aria-label="Primary navigation">
+            <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/dashboard">
+              Dashboard
+            </NavLink>
+            <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/create-group">
+              Create group
+            </NavLink>
+            <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/profile">
+              Profile settings
+            </NavLink>
+          </nav>
+        ) : null}
       </div>
-
+      <Link className="navbar__brand-link navbar__brand-link--center" to="/dashboard">
+        <BrandMark className="navbar__logo" />
+        <div className="navbar__brand-text">
+          <p className="navbar__title">Accountabilibuddy</p>
+          <p className="navbar__subtitle">Hold each other accountable.</p>
+        </div>
+      </Link>
       <div className="navbar__actions">
         <InstallPrompt compact />
 

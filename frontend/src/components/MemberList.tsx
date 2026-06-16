@@ -1,15 +1,45 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAllCheckins } from '../hooks/useCheckins';
 import { promoteToCoOwner, removeMember, updateNotifications, useMembers } from '../hooks/useMembers';
+import { useSchedules } from '../hooks/useSchedules';
 import { getAvatarFallback } from '../lib/avatar';
+import { getScheduleDateKey, hasScheduleStarted } from '../lib/schedules';
+import { pokeMember } from '../lib/api';
 import LoadingSpinner from './LoadingSpinner';
 
 const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUserRole: string }) => {
   const { user } = useAuth();
   const { members, loading } = useMembers(groupId);
+  const { schedules } = useSchedules(groupId);
+  const { checkins } = useAllCheckins(groupId, '7d');
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const canManage = currentUserRole === 'owner' || currentUserRole === 'coowner';
   const isOwner = currentUserRole === 'owner';
+  const pendingByMember = useMemo(() => {
+    const now = new Date();
+    const dueSchedules = schedules.filter((schedule) => hasScheduleStarted(schedule, now));
+    const completedIds = new Set(
+      checkins.filter((checkin) => checkin.status === 'completed').map((checkin) => checkin.id)
+    );
+
+    return new Map(
+      members.map((member) => {
+        const overdueSchedules = dueSchedules.filter(
+          (schedule) =>
+            !completedIds.has(`${schedule.id}_${member.uid}_${getScheduleDateKey(schedule, now)}`)
+        );
+
+        return [
+          member.uid,
+          {
+            count: overdueSchedules.length,
+            labels: overdueSchedules.map((schedule) => schedule.name)
+          }
+        ];
+      })
+    );
+  }, [checkins, members, schedules]);
 
   const handlePromote = async (uid: string) => {
     try {
@@ -52,20 +82,37 @@ const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUser
     }
   };
 
+  const handlePoke = async (uid: string) => {
+    try {
+      setBusyAction(`poke-${uid}`);
+      await pokeMember(groupId, uid);
+      window.alert('Poke sent.');
+    } catch (error) {
+      console.error('Unable to send poke', error);
+      window.alert(error instanceof Error ? error.message : 'Unable to send a poke right now.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner label="Loading members..." />;
   }
 
   return (
     <div className="member-list">
-      {members.map((member) => {
+      {members.map((member, index) => {
         const isSelf = member.uid === user?.id;
         const canPromote = isOwner && member.role === 'member';
         const canRemove = canManage && !isSelf && member.role !== 'owner';
+        const pending = pendingByMember.get(member.uid) ?? { count: 0, labels: [] };
+        const canPoke = !isSelf && pending.count > 0;
+        const showActions = canManage || canPoke;
 
         return (
-          <article className="member-card" key={member.uid}>
+          <article className={`member-card${pending.count ? ' member-card--pending' : ''}`} key={member.uid}>
             <div className="member-card__identity">
+              <span className="leaderboard-rank">#{index + 1}</span>
               <img
                 className="avatar"
                 src={member.photoURL || getAvatarFallback(member.displayName || 'AB')}
@@ -77,6 +124,7 @@ const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUser
               </div>
             </div>
             <div className="member-card__meta">
+              <span className="badge badge--warning">⭐ {member.starCount}</span>
               <span className="badge badge--neutral">{member.role}</span>
               <label className="toggle-inline">
                 <input
@@ -90,8 +138,17 @@ const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUser
                 Notifications
               </label>
             </div>
-            {canManage ? (
+            {showActions ? (
               <div className="member-card__actions">
+                {canPoke ? (
+                  <button
+                    className="button button--secondary button--small"
+                    disabled={busyAction === `poke-${member.uid}`}
+                    onClick={() => void handlePoke(member.uid)}
+                  >
+                    Poke
+                  </button>
+                ) : null}
                 {canPromote ? (
                   <button
                     className="button button--ghost button--small"
@@ -111,6 +168,12 @@ const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUser
                   </button>
                 ) : null}
               </div>
+            ) : null}
+            {pending.count ? (
+              <p className="helper-text member-card__status">
+                Waiting on {pending.count} task{pending.count === 1 ? '' : 's'}
+                {pending.labels.length ? `: ${pending.labels.join(', ')}` : ''}.
+              </p>
             ) : null}
           </article>
         );

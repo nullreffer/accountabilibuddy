@@ -11,6 +11,7 @@ const mapMember = (m: {
   notificationsEnabled: boolean;
   joinedAt: Date;
   user: { displayName: string; email: string; photoUrl: string | null };
+  starCount: number;
 }) => ({
   uid: m.userId,
   role: m.role,
@@ -18,7 +19,8 @@ const mapMember = (m: {
   joinedAt: m.joinedAt,
   displayName: m.user.displayName,
   email: m.user.email,
-  photoURL: m.user.photoUrl ?? ''
+  photoURL: m.user.photoUrl ?? '',
+  starCount: m.starCount
 });
 
 // GET /api/groups/[id]/members
@@ -38,7 +40,29 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       orderBy: { joinedAt: 'asc' }
     });
 
-    return ok(members.map(mapMember));
+    const starCounts = await prisma.checkin.groupBy({
+      by: ['userId'],
+      where: {
+        groupId: id,
+        status: 'completed'
+      },
+      _count: { _all: true }
+    });
+    const starCountByUser = new Map(starCounts.map((entry) => [entry.userId, entry._count._all]));
+    const leaderboard = members
+      .map((member) => ({
+        ...member,
+        starCount: starCountByUser.get(member.userId) ?? 0
+      }))
+      .sort((left, right) => {
+        if (right.starCount !== left.starCount) {
+          return right.starCount - left.starCount;
+        }
+
+        return left.joinedAt.getTime() - right.joinedAt.getTime();
+      });
+
+    return ok(leaderboard.map(mapMember));
   } catch (err) {
     return handleError(err);
   }

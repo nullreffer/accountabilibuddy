@@ -139,6 +139,7 @@ export interface GroupMember {
   displayName: string;
   email: string;
   photoURL: string;
+  starCount: number;
 }
 
 export const fetchMembers = (groupId: string) =>
@@ -152,6 +153,9 @@ export const updateMember = (
 
 export const removeMember = (groupId: string, uid: string) =>
   request<void>('DELETE', `/api/groups/${groupId}/members/${uid}`);
+
+export const pokeMember = (groupId: string, uid: string) =>
+  request<{ message: string }>('POST', `/api/groups/${groupId}/members/${uid}/poke`);
 
 // ---------- Schedules ----------
 

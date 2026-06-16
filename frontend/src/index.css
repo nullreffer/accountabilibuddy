@@ -529,6 +529,26 @@ a {
   gap: 0.85rem;
 }
 
+.member-card__status {
+  grid-column: 1 / -1;
+}
+
+.member-card--pending {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.leaderboard-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary);
+  font-weight: 700;
+}
+
 .schedule-card {
   flex-wrap: wrap;
 }
@@ -928,6 +948,42 @@ a {
   gap: 0.75rem;
 }
 
+.step-card {
+  gap: 1.5rem;
+}
+
+.step-card--collapsed {
+  gap: 0;
+}
+
+.step-card__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+}
+
+.step-card__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--primary);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.step-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .template-card {
   display: flex;
   flex-direction: column;
@@ -988,6 +1044,23 @@ a {
 .schedule-draft-item .text-muted {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.invite-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.invite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .form-row {

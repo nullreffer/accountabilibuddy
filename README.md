@@ -1,4 +1,4 @@
-# Accountabilibuddy
+# SquadGoals
 
 A collaborative accountability PWA — group check-ins, schedules, reminders, and a "jar" penalty system.
 

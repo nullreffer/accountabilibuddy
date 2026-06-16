@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { createGroup, createSchedule } from '../lib/api';
+import { createGroup, createInvite, createSchedule } from '../lib/api';
 
 type Frequency = 'daily' | 'weekly' | 'custom';
+type StepKey = 'template' | 'group' | 'schedule' | 'invite';
 
 interface ScheduleDraft {
   name: string;
@@ -84,6 +85,8 @@ const formatScheduleLabel = (schedule: ScheduleDraft) => {
   return `${schedule.name} · ${days} at ${schedule.time}`;
 };
 
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
 interface CreateGroupFormProps {
   onCreated?: (groupId: string) => void;
   onCancel?: () => void;
@@ -99,6 +102,10 @@ const CreateGroupForm = ({
 }: CreateGroupFormProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const templateRef = useRef<HTMLElement | null>(null);
+  const groupRef = useRef<HTMLElement | null>(null);
+  const scheduleRef = useRef<HTMLElement | null>(null);
+  const inviteRef = useRef<HTMLElement | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [jarEnabled, setJarEnabled] = useState(false);
@@ -111,12 +118,45 @@ const CreateGroupForm = ({
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [scheduleTime, setScheduleTime] = useState('08:00');
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [openStep, setOpenStep] = useState<StepKey | null>('template');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+
+  const getStepRef = (step: StepKey) => {
+    switch (step) {
+      case 'template':
+        return templateRef;
+      case 'group':
+        return groupRef;
+      case 'schedule':
+        return scheduleRef;
+      case 'invite':
+        return inviteRef;
+    }
+  };
+
+  const openAndScrollToStep = (step: StepKey) => {
+    setOpenStep(step);
+    window.requestAnimationFrame(() => {
+      getStepRef(step).current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const toggleStep = (step: StepKey) => {
+    setOpenStep((current) => (current === step ? null : step));
+  };
 
   const applyTemplate = (template: Template) => {
     setName(template.name);
     setDescription(template.description);
     setSchedules([...template.schedules]);
     setActiveTemplate(template.name);
+    openAndScrollToStep('group');
+  };
+
+  const skipTemplateSelection = () => {
+    setActiveTemplate(null);
+    openAndScrollToStep('group');
   };
 
   const toggleDay = (day: number) => {
@@ -155,15 +195,57 @@ const CreateGroupForm = ({
     setSchedules((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
   };
 
+  const goToSchedules = () => {
+    if (!name.trim()) {
+      window.alert('Please provide a group name.');
+      return;
+    }
+
+    if (jarEnabled && Number(jarAmount) <= 0) {
+      window.alert('Jar amount must be greater than 0.');
+      return;
+    }
+
+    openAndScrollToStep('schedule');
+  };
+
+  const addInviteEmailToList = () => {
+    const email = inviteEmail.trim().toLowerCase();
+
+    if (!email) {
+      window.alert('Enter an email address first.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      window.alert('Please enter a valid email address.');
+      return;
+    }
+
+    if (inviteEmails.includes(email)) {
+      window.alert('That invite is already in the list.');
+      return;
+    }
+
+    setInviteEmails((current) => [...current, email]);
+    setInviteEmail('');
+  };
+
+  const removeInviteEmailFromList = (email: string) => {
+    setInviteEmails((current) => current.filter((value) => value !== email));
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) return;
     if (!name.trim()) {
       window.alert('Please provide a group name.');
+      openAndScrollToStep('group');
       return;
     }
     if (jarEnabled && Number(jarAmount) <= 0) {
       window.alert('Jar amount must be greater than 0.');
+      openAndScrollToStep('group');
       return;
     }
 
@@ -180,6 +262,18 @@ const CreateGroupForm = ({
       if (schedules.length > 0) {
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         await Promise.all(schedules.map((schedule) => createSchedule(group.id, { ...schedule, timezone })));
+      }
+
+      if (inviteEmails.length > 0) {
+        const inviteResults = await Promise.allSettled(
+          inviteEmails.map((email) => createInvite(group.id, email, true))
+        );
+        const failedInviteCount = inviteResults.filter((result) => result.status === 'rejected').length;
+        if (failedInviteCount > 0) {
+          window.alert(
+            `Your group was created, but ${failedInviteCount} invite${failedInviteCount === 1 ? '' : 's'} could not be sent.`
+          );
+        }
       }
 
       if (onCreated) {
@@ -202,175 +296,286 @@ const CreateGroupForm = ({
           ← Back to dashboard
         </Link>
       ) : null}
+      {onCancel ? (
+        <div className="step-card__actions">
+          <button className="button button--ghost button--small" onClick={onCancel} type="button">
+            Cancel
+          </button>
+        </div>
+      ) : null}
 
-      <section className="card stack-lg">
-        <div>
-          <p className="eyebrow">Quick start</p>
-          <h2>Pick a template</h2>
-          <p className="helper-text">Choose a template to pre-fill the group details and schedules, or fill in the form yourself.</p>
-        </div>
-        <div className="template-grid">
-          {TEMPLATES.map((template) => (
-            <button
-              key={template.name}
-              className={`template-card${activeTemplate === template.name ? ' template-card--active' : ''}`}
-              onClick={() => applyTemplate(template)}
-              type="button"
-            >
-              <span className="template-card__emoji">{template.emoji}</span>
-              {template.name}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card stack-lg">
-        <div className="card__header card__header--stack-sm">
-          <div>
-            <p className="eyebrow">Create a group</p>
-            <h1>Start a new accountability circle</h1>
-          </div>
-          {onCancel ? (
-            <button className="button button--ghost button--small" onClick={onCancel} type="button">
-              Cancel
-            </button>
-          ) : null}
-        </div>
-        <form id="create-group-form" className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-          <label className="field">
-            <span>Group name</span>
-            <input className="input" onChange={(event) => setName(event.target.value)} required value={name} />
-          </label>
-          <label className="field field--full">
-            <span>Description</span>
-            <textarea
-              className="input input--textarea"
-              onChange={(event) => setDescription(event.target.value)}
-              rows={3}
-              value={description}
-            />
-          </label>
-          <label className="switch-card field--full">
-            <input checked={jarEnabled} onChange={(event) => setJarEnabled(event.target.checked)} type="checkbox" />
+      <form className="stack-xl" onSubmit={(event) => void handleSubmit(event)}>
+        <section className={`card stack-lg step-card${openStep === 'template' ? '' : ' step-card--collapsed'}`} ref={templateRef}>
+          <button
+            aria-expanded={openStep === 'template'}
+            className="step-card__toggle"
+            onClick={() => toggleStep('template')}
+            type="button"
+          >
             <div>
-              <strong>Enable accountability jar</strong>
-              <p>Track missed check-ins and attach a dollar value.</p>
+              <p className="eyebrow">Step 1</p>
+              <h2>Pick a template</h2>
+              <p className="helper-text">Choose a starting point or skip and build your group from scratch.</p>
             </div>
-          </label>
-          {jarEnabled ? (
-            <label className="field">
-              <span>$ per missed action</span>
-              <input
-                className="input"
-                min="0.01"
-                onChange={(event) => setJarAmount(event.target.value)}
-                step="0.01"
-                type="number"
-                value={jarAmount}
-              />
-            </label>
-          ) : null}
-          <label className="switch-card field--full">
-            <input
-              checked={photoProofRequired}
-              onChange={(event) => setPhotoProofRequired(event.target.checked)}
-              type="checkbox"
-            />
-            <div>
-              <strong>Require photo proof</strong>
-              <p>Members must attach a photo when checking in.</p>
-            </div>
-          </label>
-        </form>
-      </section>
+            <span className="step-card__chevron">{openStep === 'template' ? '−' : '+'}</span>
+          </button>
 
-      <section className="card stack-lg">
-        <div>
-          <p className="eyebrow">Schedules</p>
-          <h2>Add check-in schedules</h2>
-          <p className="helper-text">Define when members should check in. You can add more after creating the group.</p>
-        </div>
-
-        {schedules.length > 0 ? (
-          <div className="schedule-draft-list">
-            {schedules.map((schedule, index) => (
-              <div className="schedule-draft-item" key={`${schedule.name}-${index}`}>
-                <div>
-                  <strong>{schedule.name}</strong>
-                  <p className="text-muted">{formatScheduleLabel(schedule)}</p>
-                </div>
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  style={{ color: 'var(--danger)', flexShrink: 0 }}
-                  onClick={() => removeSchedule(index)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="form-grid" style={{ gap: '1rem' }}>
-          <label className="field field--full">
-            <span>Schedule name</span>
-            <input
-              className="input"
-              placeholder="e.g. Morning Run"
-              value={scheduleName}
-              onChange={(event) => setScheduleName(event.target.value)}
-            />
-          </label>
-
-          <div className="form-row field--full">
-            <label className="field">
-              <span>Frequency</span>
-              <select
-                className="input"
-                value={scheduleFrequency}
-                onChange={(event) => {
-                  setScheduleFrequency(event.target.value as Frequency);
-                  setScheduleDays([]);
-                }}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-              </select>
-            </label>
-            <label className="field">
-              <span>Time</span>
-              <input className="input" type="time" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} />
-            </label>
-          </div>
-
-          {scheduleFrequency === 'weekly' ? (
-            <div className="field field--full">
-              <span className="field__label">Days</span>
-              <div className="day-picker">
-                {DAY_LABELS.map((label, day) => (
+          {openStep === 'template' ? (
+            <>
+              <div className="template-grid">
+                {TEMPLATES.map((template) => (
                   <button
-                    key={label}
+                    key={template.name}
+                    className={`template-card${activeTemplate === template.name ? ' template-card--active' : ''}`}
+                    onClick={() => applyTemplate(template)}
                     type="button"
-                    className={`day-pill${scheduleDays.includes(day) ? ' day-pill--active' : ''}`}
-                    onClick={() => toggleDay(day)}
                   >
-                    {label}
+                    <span className="template-card__emoji">{template.emoji}</span>
+                    {template.name}
                   </button>
                 ))}
               </div>
-            </div>
+              <div className="step-card__actions">
+                <button className="button button--ghost" onClick={skipTemplateSelection} type="button">
+                  Skip
+                </button>
+              </div>
+            </>
           ) : null}
+        </section>
 
-          <button type="button" className="button button--secondary" onClick={addSchedule}>
-            + Add schedule
+        <section className={`card stack-lg step-card${openStep === 'group' ? '' : ' step-card--collapsed'}`} ref={groupRef}>
+          <button
+            aria-expanded={openStep === 'group'}
+            className="step-card__toggle"
+            onClick={() => toggleStep('group')}
+            type="button"
+          >
+            <div>
+              <p className="eyebrow">Step 2</p>
+              <h2>Group info</h2>
+              <p className="helper-text">Name your squad and set the accountability rules.</p>
+            </div>
+            <span className="step-card__chevron">{openStep === 'group' ? '−' : '+'}</span>
           </button>
-        </div>
-      </section>
 
-      <button className="button button--primary" disabled={loading} form="create-group-form" type="submit">
-        {loading ? 'Creating group…' : submitLabel}
-      </button>
+          {openStep === 'group' ? (
+            <>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Group name</span>
+                  <input className="input" onChange={(event) => setName(event.target.value)} required value={name} />
+                </label>
+                <label className="field field--full">
+                  <span>Description</span>
+                  <textarea
+                    className="input input--textarea"
+                    onChange={(event) => setDescription(event.target.value)}
+                    rows={3}
+                    value={description}
+                  />
+                </label>
+                <label className="switch-card field--full">
+                  <input checked={jarEnabled} onChange={(event) => setJarEnabled(event.target.checked)} type="checkbox" />
+                  <div>
+                    <strong>Enable accountability jar</strong>
+                    <p>Track missed check-ins and attach a dollar value.</p>
+                  </div>
+                </label>
+                {jarEnabled ? (
+                  <label className="field">
+                    <span>$ per missed action</span>
+                    <input
+                      className="input"
+                      min="0.01"
+                      onChange={(event) => setJarAmount(event.target.value)}
+                      step="0.01"
+                      type="number"
+                      value={jarAmount}
+                    />
+                  </label>
+                ) : null}
+                <label className="switch-card field--full">
+                  <input
+                    checked={photoProofRequired}
+                    onChange={(event) => setPhotoProofRequired(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <div>
+                    <strong>Require photo proof</strong>
+                    <p>Members must attach a photo when checking in.</p>
+                  </div>
+                </label>
+              </div>
+              <div className="step-card__actions">
+                <button className="button button--secondary" onClick={goToSchedules} type="button">
+                  Next
+                </button>
+              </div>
+            </>
+          ) : null}
+        </section>
+
+        <section className={`card stack-lg step-card${openStep === 'schedule' ? '' : ' step-card--collapsed'}`} ref={scheduleRef}>
+          <button
+            aria-expanded={openStep === 'schedule'}
+            className="step-card__toggle"
+            onClick={() => toggleStep('schedule')}
+            type="button"
+          >
+            <div>
+              <p className="eyebrow">Step 3</p>
+              <h2>Schedules</h2>
+              <p className="helper-text">Add the check-ins your squad should complete.</p>
+            </div>
+            <span className="step-card__chevron">{openStep === 'schedule' ? '−' : '+'}</span>
+          </button>
+
+          {openStep === 'schedule' ? (
+            <>
+              {schedules.length > 0 ? (
+                <div className="schedule-draft-list">
+                  {schedules.map((schedule, index) => (
+                    <div className="schedule-draft-item" key={`${schedule.name}-${index}`}>
+                      <div>
+                        <strong>{schedule.name}</strong>
+                        <p className="text-muted">{formatScheduleLabel(schedule)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        style={{ color: 'var(--danger)', flexShrink: 0 }}
+                        onClick={() => removeSchedule(index)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">No schedules yet. You can add one now or continue and add them later.</div>
+              )}
+
+              <div className="form-grid" style={{ gap: '1rem' }}>
+                <label className="field field--full">
+                  <span>Schedule name</span>
+                  <input
+                    className="input"
+                    placeholder="e.g. Morning Run"
+                    value={scheduleName}
+                    onChange={(event) => setScheduleName(event.target.value)}
+                  />
+                </label>
+
+                <div className="form-row field--full">
+                  <label className="field">
+                    <span>Frequency</span>
+                    <select
+                      className="input"
+                      value={scheduleFrequency}
+                      onChange={(event) => {
+                        setScheduleFrequency(event.target.value as Frequency);
+                        setScheduleDays([]);
+                      }}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Time</span>
+                    <input className="input" type="time" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} />
+                  </label>
+                </div>
+
+                {scheduleFrequency === 'weekly' ? (
+                  <div className="field field--full">
+                    <span className="field__label">Days</span>
+                    <div className="day-picker">
+                      {DAY_LABELS.map((label, day) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className={`day-pill${scheduleDays.includes(day) ? ' day-pill--active' : ''}`}
+                          onClick={() => toggleDay(day)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <button type="button" className="button button--secondary" onClick={addSchedule}>
+                  + Add schedule
+                </button>
+              </div>
+
+              <div className="step-card__actions">
+                <button className="button button--secondary" onClick={() => openAndScrollToStep('invite')} type="button">
+                  Next
+                </button>
+              </div>
+            </>
+          ) : null}
+        </section>
+
+        <section className={`card stack-lg step-card${openStep === 'invite' ? '' : ' step-card--collapsed'}`} ref={inviteRef}>
+          <button
+            aria-expanded={openStep === 'invite'}
+            className="step-card__toggle"
+            onClick={() => toggleStep('invite')}
+            type="button"
+          >
+            <div>
+              <p className="eyebrow">Step 4</p>
+              <h2>Invite people</h2>
+              <p className="helper-text">Optionally line up invite emails to send right after the group is created.</p>
+            </div>
+            <span className="step-card__chevron">{openStep === 'invite' ? '−' : '+'}</span>
+          </button>
+
+          {openStep === 'invite' ? (
+            <>
+              <div className="form-inline">
+                <input
+                  className="input"
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="friend@example.com"
+                  type="email"
+                  value={inviteEmail}
+                />
+                <button className="button button--secondary" onClick={addInviteEmailToList} type="button">
+                  Add invite
+                </button>
+              </div>
+
+              {inviteEmails.length ? (
+                <div className="invite-chip-list">
+                  {inviteEmails.map((email) => (
+                    <button
+                      className="invite-chip"
+                      key={email}
+                      onClick={() => removeInviteEmailFromList(email)}
+                      type="button"
+                    >
+                      {email} <span aria-hidden="true">✕</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="helper-text">No invites queued yet. You can skip this and invite people later.</p>
+              )}
+
+              <div className="step-card__actions">
+                <button className="button button--primary" disabled={loading} type="submit">
+                  {loading ? 'Creating group…' : inviteEmails.length ? `${submitLabel} & send invites` : submitLabel}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </section>
+      </form>
     </div>
   );
 };

@@ -11,9 +11,9 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       manifest: {
-        name: 'Accountabilibuddy',
-        short_name: 'Buddy',
-        description: 'A collaborative accountability PWA for groups, check-ins, reminders, and support.',
+        name: 'SquadGoals',
+        short_name: 'SquadGoals',
+        description: 'A collaborative accountability app for squads, check-ins, reminders, and support.',
         theme_color: '#4f46e5',
         background_color: '#ffffff',
         display: 'standalone',

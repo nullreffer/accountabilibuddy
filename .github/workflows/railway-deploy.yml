@@ -10,6 +10,9 @@ concurrency:
   group: railway-production
   cancel-in-progress: true
 
+env:
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN || secrets.RAILWAY_API_TOKEN }}
+
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
@@ -23,10 +26,20 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Validate Railway config
+        run: |
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "::error::Missing Railway token. Set repository secret RAILWAY_TOKEN or RAILWAY_API_TOKEN."
+            exit 1
+          fi
+          if [ -z "${RAILWAY_FRONTEND_SERVICE:-}" ]; then
+            echo "::error::Missing Railway frontend service. Set repository variable RAILWAY_FRONTEND_SERVICE."
+            exit 1
+          fi
+
       - name: Deploy frontend
         run: railway up ./frontend --path-as-root --service "$RAILWAY_FRONTEND_SERVICE" --detach
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_FRONTEND_SERVICE: ${{ vars.RAILWAY_FRONTEND_SERVICE }}
 
   deploy-backend:
@@ -41,8 +54,18 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Validate Railway config
+        run: |
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "::error::Missing Railway token. Set repository secret RAILWAY_TOKEN or RAILWAY_API_TOKEN."
+            exit 1
+          fi
+          if [ -z "${RAILWAY_BACKEND_SERVICE:-}" ]; then
+            echo "::error::Missing Railway backend service. Set repository variable RAILWAY_BACKEND_SERVICE."
+            exit 1
+          fi
+
       - name: Deploy backend
         run: railway up ./backend --path-as-root --service "$RAILWAY_BACKEND_SERVICE" --detach
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_BACKEND_SERVICE: ${{ vars.RAILWAY_BACKEND_SERVICE }}

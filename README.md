@@ -110,7 +110,7 @@ This repository now includes `.github/workflows/railway-deploy.yml`, which deplo
 
 Configure these GitHub settings before relying on it:
 
-- **Secret:** `RAILWAY_TOKEN`
+- **Secret:** `RAILWAY_TOKEN` (or `RAILWAY_API_TOKEN`)
 - **Repository variable:** `RAILWAY_FRONTEND_SERVICE`
 - **Repository variable:** `RAILWAY_BACKEND_SERVICE`
 

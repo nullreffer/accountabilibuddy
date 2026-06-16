@@ -46,7 +46,7 @@ const Dashboard = () => {
   }, [user]);
 
   if (loading) {
-    return <LoadingSpinner label="Loading your accountability circles..." />;
+    return <LoadingSpinner label="Loading your SquadGoals groups..." />;
   }
 
   return (

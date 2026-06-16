@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './index.css';
 
@@ -15,6 +16,10 @@ if (gaMeasurementId && gaMeasurementId !== 'G-XXXXXXXXXX') {
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`;
   document.head.appendChild(script);
+}
+
+if ('serviceWorker' in navigator) {
+  registerSW({ immediate: true });
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

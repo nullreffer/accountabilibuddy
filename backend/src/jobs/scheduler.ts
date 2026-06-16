@@ -1,64 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { sendPushToGroup } from '../lib/push';
-
-type ScheduleRow = {
-  id: string;
-  groupId: string;
-  name: string;
-  frequency: string;
-  daysOfWeek: number[];
-  time: string;
-  timezone: string;
-};
-
-const WINDOW_MINUTES = 1;
-
-const parseTime = (value: string) => {
-  const [h, m] = value.split(':').map(Number);
-  return { hours: Number.isFinite(h) ? h : 9, minutes: Number.isFinite(m) ? m : 0 };
-};
-
-const getLocalParts = (date: Date, timezone = 'UTC') => {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    weekday: 'short'
-  });
-
-  const parts = fmt.formatToParts(date);
-  const find = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value ?? '';
-  const weekdayMap: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6
-  };
-
-  return {
-    hour: Number(find('hour')),
-    minute: Number(find('minute')),
-    weekday: weekdayMap[find('weekday')] ?? date.getUTCDay(),
-    dateKey: `${find('year')}-${find('month')}-${find('day')}`
-  };
-};
-
-const isScheduleDue = (schedule: ScheduleRow, now = new Date()) => {
-  const local = getLocalParts(now, schedule.timezone);
-  const target = parseTime(schedule.time);
-  const diff = Math.abs(local.hour * 60 + local.minute - (target.hours * 60 + target.minutes));
-
-  if (diff > WINDOW_MINUTES) return false;
-
-  if (schedule.frequency === 'weekly' || schedule.frequency === 'custom') {
-    return schedule.daysOfWeek.includes(local.weekday);
-  }
-
-  return true;
-};
+import { getLocalParts, isScheduleDue } from '../lib/schedules';
 
 // Run every minute — send schedule reminders
 const scheduleReminders = cron.schedule('* * * * *', async () => {

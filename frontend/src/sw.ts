@@ -19,7 +19,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
-  let title = 'Accountabilibuddy';
+  let title = 'SquadGoals';
   let body = 'You have a new notification.';
   let icon = '/icons/icon.svg';
 

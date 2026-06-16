@@ -18,7 +18,7 @@ const LoginPage = () => {
     <div className="auth-page">
       <div className="auth-card">
         <BrandMark className="auth-card__logo" />
-        <h1>Accountabilibuddy</h1>
+        <h1>SquadGoals</h1>
         <p className="auth-card__tagline">Hold each other accountable.</p>
         <GoogleLogin
           onSuccess={(credentialResponse) => {

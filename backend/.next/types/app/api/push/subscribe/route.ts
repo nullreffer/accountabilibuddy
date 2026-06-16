@@ -1,4 +1,4 @@
-// File: /home/runner/work/accountabilibuddy/accountabilibuddy/nullreffer/accountabilibuddy/backend/src/app/api/push/subscribe/route.ts
+// File: /home/runner/work/accountabilibuddy/accountabilibuddy/backend/src/app/api/push/subscribe/route.ts
 import * as entry from '../../../../../../src/app/api/push/subscribe/route.js'
 import type { NextRequest } from 'next/server.js'
 

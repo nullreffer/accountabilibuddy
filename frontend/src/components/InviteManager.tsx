@@ -103,7 +103,7 @@ const InviteManager = ({ groupId, isOwner }: { groupId: string; isOwner: boolean
         <div className="card__header">
           <div>
             <p className="eyebrow">Invite links</p>
-            <h3>Bring in a new accountability buddy</h3>
+            <h3>Bring in a new squadmate</h3>
           </div>
           <button className="button button--primary" disabled={busy} onClick={() => void handleGenerateInvite()}>
             Generate Invite Link

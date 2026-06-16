@@ -1,4 +1,4 @@
-// File: /home/runner/work/accountabilibuddy/accountabilibuddy/nullreffer/accountabilibuddy/backend/src/app/api/auth/verify-email/route.ts
+// File: /home/runner/work/accountabilibuddy/accountabilibuddy/backend/src/app/api/auth/verify-email/route.ts
 import * as entry from '../../../../../../src/app/api/auth/verify-email/route.js'
 import type { NextRequest } from 'next/server.js'
 

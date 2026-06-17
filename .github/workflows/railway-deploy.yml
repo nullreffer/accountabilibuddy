@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN || secrets.RAILWAY_API_TOKEN }}
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN || secrets.RAILWAY_TOKEN }}
   DEFAULT_RAILWAY_FRONTEND_SERVICE: frontend
   DEFAULT_RAILWAY_BACKEND_SERVICE: backend
 

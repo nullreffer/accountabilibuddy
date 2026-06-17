@@ -111,8 +111,8 @@ This repository now includes `.github/workflows/railway-deploy.yml`, which deplo
 Configure these GitHub settings before relying on it:
 
 - **Secret:** `RAILWAY_TOKEN` (or `RAILWAY_API_TOKEN`)
-- **Repository variable:** `RAILWAY_FRONTEND_SERVICE`
-- **Repository variable:** `RAILWAY_BACKEND_SERVICE`
+- **Optional repository variable:** `RAILWAY_FRONTEND_SERVICE`
+- **Optional repository variable:** `RAILWAY_BACKEND_SERVICE`
 
-Each service variable should be set to the Railway service name or service ID for the existing frontend/backend service.
+If the service variables are omitted, the workflow deploys to Railway services named `frontend` and `backend`. Set either variable to override the default service name or use a service ID instead.
 # evify

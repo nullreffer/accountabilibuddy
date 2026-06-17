@@ -11,9 +11,12 @@ const ScheduleCard = ({
   onDelete: () => void;
   canEdit: boolean;
 }) => {
-  const dayText = schedule.daysOfWeek.length
-    ? schedule.daysOfWeek.map((day) => dayLabels[day]).join(', ')
-    : 'Every day';
+  const dayText =
+    schedule.frequency === 'monthly'
+      ? `Day ${schedule.daysOfWeek[0] ?? 1} of each month`
+      : schedule.daysOfWeek.length
+        ? schedule.daysOfWeek.map((day) => dayLabels[day]).join(', ')
+        : 'Every day';
 
   return (
     <article className="schedule-card">

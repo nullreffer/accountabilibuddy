@@ -12,6 +12,8 @@ concurrency:
 
 env:
   RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN || secrets.RAILWAY_API_TOKEN }}
+  DEFAULT_RAILWAY_FRONTEND_SERVICE: frontend
+  DEFAULT_RAILWAY_BACKEND_SERVICE: backend
 
 jobs:
   deploy-frontend:
@@ -32,15 +34,13 @@ jobs:
             echo "::error::Missing Railway token. Set repository secret RAILWAY_TOKEN or RAILWAY_API_TOKEN."
             exit 1
           fi
-          if [ -z "${RAILWAY_FRONTEND_SERVICE:-}" ]; then
-            echo "::error::Missing Railway frontend service. Set repository variable RAILWAY_FRONTEND_SERVICE."
-            exit 1
-          fi
+          service="${RAILWAY_FRONTEND_SERVICE:-$DEFAULT_RAILWAY_FRONTEND_SERVICE}"
+          echo "RAILWAY_FRONTEND_SERVICE=$service" >> "$GITHUB_ENV"
+        env:
+          RAILWAY_FRONTEND_SERVICE: ${{ vars.RAILWAY_FRONTEND_SERVICE }}
 
       - name: Deploy frontend
         run: railway up ./frontend --path-as-root --service "$RAILWAY_FRONTEND_SERVICE" --detach
-        env:
-          RAILWAY_FRONTEND_SERVICE: ${{ vars.RAILWAY_FRONTEND_SERVICE }}
 
   deploy-backend:
     runs-on: ubuntu-latest
@@ -60,12 +60,10 @@ jobs:
             echo "::error::Missing Railway token. Set repository secret RAILWAY_TOKEN or RAILWAY_API_TOKEN."
             exit 1
           fi
-          if [ -z "${RAILWAY_BACKEND_SERVICE:-}" ]; then
-            echo "::error::Missing Railway backend service. Set repository variable RAILWAY_BACKEND_SERVICE."
-            exit 1
-          fi
+          service="${RAILWAY_BACKEND_SERVICE:-$DEFAULT_RAILWAY_BACKEND_SERVICE}"
+          echo "RAILWAY_BACKEND_SERVICE=$service" >> "$GITHUB_ENV"
+        env:
+          RAILWAY_BACKEND_SERVICE: ${{ vars.RAILWAY_BACKEND_SERVICE }}
 
       - name: Deploy backend
         run: railway up ./backend --path-as-root --service "$RAILWAY_BACKEND_SERVICE" --detach
-        env:
-          RAILWAY_BACKEND_SERVICE: ${{ vars.RAILWAY_BACKEND_SERVICE }}

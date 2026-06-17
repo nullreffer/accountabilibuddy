@@ -86,8 +86,8 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
           type="text"
           value={text}
         />
-        <button className="button button--primary" disabled={sending || !text.trim()} type="submit">
-          {sending ? '…' : 'Send'}
+        <button aria-label="Send" className="icon-btn send-btn" disabled={sending || !text.trim()} type="submit">
+          {sending ? '…' : '➤'}
         </button>
       </form>
     </section>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ChatPanel from '../components/ChatPanel';
 import CheckinFeed from '../components/CheckinFeed';
@@ -74,6 +74,8 @@ const GroupPage = () => {
   const { checkins, loading: checkinsLoading } = useCheckins(groupId, 50);
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('chat');
   const [activeModal, setActiveModal] = useState<'members' | 'settings' | 'notifications' | 'chart' | 'schedules' | null>(null);
+  const [groupMenuOpen, setGroupMenuOpen] = useState(false);
+  const groupMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Check-in state (checkinType comes from group settings, not local state)
   const [timerStartTime, setTimerStartTime] = useState<number | null>(() => {
@@ -124,6 +126,17 @@ const GroupPage = () => {
   useEffect(() => {
     if (user && groupId) setNotifPrefs(loadNotifPrefs(groupId, user.id));
   }, [groupId, user]);
+
+  // Close group action menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (groupMenuRef.current && !groupMenuRef.current.contains(e.target as Node)) {
+        setGroupMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Timer interval – counts up using wall-clock diff so background doesn't matter
   useEffect(() => {
@@ -318,30 +331,30 @@ const GroupPage = () => {
   const checkinSlot = (() => {
     if (!group || !user) return null;
     if (todaysCheckin) {
-      return <span className="status-pill status-pill--success checkin-slot-done">✅</span>;
+      return <span className="checkin-done-pill" title="Checked in today">✅</span>;
     }
     if (checkinType === 'timer') {
       if (!timerStartTime) {
         return (
-          <button className="button button--ghost button--small" onClick={handleTimerStart} title="Start timer check-in" type="button">
-            ▶ Start
+          <button className="icon-btn checkin-action-btn" onClick={handleTimerStart} title="Start timer check-in" type="button">
+            ▶
           </button>
         );
       }
       return (
         <>
           <span className="timer-display timer-display--sm">{formatDuration(elapsedSeconds)}</span>
-          <button className="button button--secondary button--small" disabled={checkinLoading} onClick={() => void handleTimerDone()} type="button">
-            {checkinLoading ? '…' : '✓ Done'}
+          <button className="icon-btn checkin-action-btn checkin-action-btn--done" disabled={checkinLoading} onClick={() => void handleTimerDone()} title="Done" type="button">
+            {checkinLoading ? '…' : '✓'}
           </button>
-          <button className="button button--ghost button--small" onClick={handleTimerCancel} type="button" title="Cancel timer">✕</button>
+          <button className="icon-btn" onClick={handleTimerCancel} title="Cancel timer" type="button">✕</button>
         </>
       );
     }
     // standard
     return (
-      <button className="button button--ghost button--small" disabled={checkinLoading} onClick={() => void handleCheckIn()} title="Check in" type="button">
-        {checkinLoading ? '…' : '✓ Check In'}
+      <button className="icon-btn checkin-action-btn" disabled={checkinLoading} onClick={() => void handleCheckIn()} title="Check in" type="button">
+        {checkinLoading ? '…' : '✓'}
       </button>
     );
   })();
@@ -350,55 +363,61 @@ const GroupPage = () => {
     <div className="page page--wide stack-xl">
       <InstallPrompt />
 
-      <section className="hero-card hero-card--compact">
-        <div className="group-title-row">
+      <section className="group-topbar">
+        <button
+          aria-label="Back to dashboard"
+          className="icon-btn back-glyph"
+          onClick={() => navigate('/dashboard')}
+          title="Back"
+          type="button"
+        >
+          ‹
+        </button>
+        <span className="group-topbar__title">{group.name}</span>
+        {members.length > 0 ? (
+          <div className="member-status-row">
+            {members.map((m) => {
+              const checked = todayCheckinUids.has(m.uid);
+              return (
+                <div className="member-status-avatar" key={m.uid} title={`${m.displayName}${checked ? ' ✓' : ''}`}>
+                  <img alt={m.displayName} className="avatar avatar--xs" src={m.photoURL || getAvatarFallback(m.displayName || 'AB')} />
+                  {checked ? <span className="member-status-check" aria-hidden="true">✓</span> : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+        <div className="group-topbar__spacer" />
+        <div className="menu-trigger" ref={groupMenuRef}>
           <button
-            aria-label="Back to dashboard"
-            className="back-glyph icon-btn"
-            onClick={() => navigate('/dashboard')}
-            title="Back to dashboard"
+            aria-label="Group actions"
+            className="icon-btn"
+            onClick={() => setGroupMenuOpen((v) => !v)}
+            title="More actions"
             type="button"
           >
-            ←
+            ⋮
           </button>
-          <div>
-            <h2 className="group-page-title">{group.name}</h2>
-            {members.length > 0 ? (
-              <div className="member-status-row">
-                {members.map((m) => {
-                  const checked = todayCheckinUids.has(m.uid);
-                  return (
-                    <div className="member-status-avatar" key={m.uid} title={`${m.displayName}${checked ? ' ✓' : ''}`}>
-                      <img
-                        alt={m.displayName}
-                        className="avatar avatar--xs"
-                        src={m.photoURL || getAvatarFallback(m.displayName || 'AB')}
-                      />
-                      {checked ? <span className="member-status-check" aria-hidden="true">✓</span> : null}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="group-actions__icons">
-          <button aria-label="Members" className="icon-btn" onClick={() => setActiveModal('members')} title="Members" type="button">
-            👥
-          </button>
-          <button aria-label="Notifications" className="icon-btn" onClick={() => setActiveModal('notifications')} title="Notifications" type="button">
-            🔔
-          </button>
-          <button aria-label="Schedules" className="icon-btn" onClick={() => setActiveModal('schedules')} title="Schedules" type="button">
-            🕐
-          </button>
-          <button aria-label="Progress chart" className="icon-btn" onClick={() => setActiveModal('chart')} title="Progress chart" type="button">
-            📊
-          </button>
-          {canManage ? (
-            <button aria-label="Settings" className="icon-btn" onClick={() => setActiveModal('settings')} title="Settings" type="button">
-              ⚙️
-            </button>
+          {groupMenuOpen ? (
+            <div className="menu-dropdown menu-dropdown--group-actions" role="menu">
+              <button className="menu-dropdown__link" onClick={() => { setActiveModal('members'); setGroupMenuOpen(false); }} type="button">
+                👥 Members
+              </button>
+              <button className="menu-dropdown__link" onClick={() => { setActiveModal('notifications'); setGroupMenuOpen(false); }} type="button">
+                🔔 Notifications
+              </button>
+              <button className="menu-dropdown__link" onClick={() => { setActiveModal('schedules'); setGroupMenuOpen(false); }} type="button">
+                🕐 Schedules
+              </button>
+              <button className="menu-dropdown__link" onClick={() => { setActiveModal('chart'); setGroupMenuOpen(false); }} type="button">
+                📊 Chart
+              </button>
+              {canManage ? (
+                <button className="menu-dropdown__link" onClick={() => { setActiveModal('settings'); setGroupMenuOpen(false); }} type="button">
+                  ⚙️ Settings
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </section>
@@ -431,7 +450,7 @@ const GroupPage = () => {
       {activeModal ? (
         <div aria-modal="true" className="modal-backdrop" onClick={() => setActiveModal(null)} role="dialog">
           <section className="modal-sheet card stack-lg" onClick={(event) => event.stopPropagation()}>
-            <div className="card__header">
+          <div className="modal-header">
               <div>
                 <p className="eyebrow">
                   {activeModal === 'members' ? 'Members'
@@ -448,7 +467,7 @@ const GroupPage = () => {
                     : 'Group chart'}
                 </h2>
               </div>
-              <button aria-label="Close modal" className="icon-btn" onClick={() => setActiveModal(null)} type="button">
+              <button aria-label="Close modal" className="icon-btn modal-close-btn" onClick={() => setActiveModal(null)} type="button">
                 ✕
               </button>
             </div>

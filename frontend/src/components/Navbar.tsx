@@ -7,7 +7,6 @@ import InstallPrompt from './InstallPrompt';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
-  const [navMenuOpen, setNavMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
     try {
@@ -40,26 +39,11 @@ const Navbar = () => {
     };
   }, [themeMode]);
 
-  // Close mobile menu on resize to desktop
-  useEffect(() => {
-    const onResize = () => {
-      if (window.innerWidth > 1024) {
-        setNavMenuOpen(false);
-      }
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const navMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (navMenuRef.current && !navMenuRef.current.contains(target)) {
-        setNavMenuOpen(false);
-      }
       if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
         setProfileMenuOpen(false);
       }
@@ -85,37 +69,6 @@ const Navbar = () => {
 
   return (
     <header className="navbar">
-      <div className="menu-trigger" ref={navMenuRef}>
-        <button
-          aria-expanded={navMenuOpen}
-          aria-label="Open navigation menu"
-          className="icon-btn icon-btn--menu"
-          onClick={() => {
-            setNavMenuOpen((current) => !current);
-            setProfileMenuOpen(false);
-          }}
-          type="button"
-        >
-          {navMenuOpen ? '✕' : '☰'}
-        </button>
-        {navMenuOpen ? (
-          <nav className="menu-dropdown menu-dropdown--nav" aria-label="Primary navigation">
-            <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/dashboard">
-              Dashboard
-            </NavLink>
-            <NavLink className={menuLinkClass} onClick={() => setNavMenuOpen(false)} to="/create-group">
-              Create group
-            </NavLink>
-            <button className="menu-dropdown__link" onClick={() => { cycleTheme(); setNavMenuOpen(false); }} type="button">
-              {themeIcon} {themeLabel}
-            </button>
-            <div className="menu-dropdown__install">
-              <InstallPrompt compact />
-            </div>
-          </nav>
-        ) : null}
-      </div>
-
       <Link className="navbar__brand-link" to="/dashboard">
         <BrandMark className="navbar__logo" />
         <div>
@@ -131,10 +84,7 @@ const Navbar = () => {
           aria-expanded={profileMenuOpen}
           aria-label="Open profile menu"
           className="avatar-button"
-          onClick={() => {
-            setProfileMenuOpen((current) => !current);
-            setNavMenuOpen(false);
-          }}
+          onClick={() => setProfileMenuOpen((current) => !current)}
           type="button"
         >
           <img
@@ -153,6 +103,12 @@ const Navbar = () => {
             <NavLink className={menuLinkClass} onClick={() => setProfileMenuOpen(false)} to="/profile">
               Profile settings
             </NavLink>
+            <button className="menu-dropdown__link" onClick={() => { cycleTheme(); }} type="button">
+              {themeIcon} {themeLabel}
+            </button>
+            <div className="menu-dropdown__install">
+              <InstallPrompt compact />
+            </div>
             <button
               className="menu-dropdown__link menu-dropdown__link--danger"
               onClick={() => {

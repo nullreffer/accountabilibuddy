@@ -730,6 +730,52 @@ a {
   text-align: center;
 }
 
+/* ---- Auth tabs (Google / Phone) ---- */
+
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.5rem 0;
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.auth-tab--active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.phone-auth {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.auth-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -1385,16 +1431,98 @@ a {
 
 /* ---- Group page title with back glyph ---- */
 
-.group-title-row {
+.group-topbar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  min-height: 3rem;
+}
+
+.group-topbar__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 14rem;
+}
+
+.group-topbar__spacer {
+  flex: 1;
 }
 
 .back-glyph {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.4rem;
+  font-weight: 400;
   flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ---- Modal header with pinned close button ---- */
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modal-close-btn {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+/* ---- Group actions dropdown ---- */
+
+.menu-dropdown--group-actions {
+  right: 0;
+  left: auto;
+  min-width: 180px;
+}
+
+/* ---- Send button icon ---- */
+
+.send-btn {
+  background: var(--primary);
+  color: #fff;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+[data-theme='dark'] .send-btn {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ---- Check-in action button ---- */
+
+.checkin-action-btn {
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .checkin-action-btn {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.checkin-action-btn--done {
+  background: rgba(16, 185, 129, 0.18);
+}
+
+.checkin-done-pill {
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 /* ---- Member check-in status row ---- */

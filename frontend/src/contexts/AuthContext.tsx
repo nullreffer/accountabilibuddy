@@ -22,6 +22,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   signIn: (idToken: string) => Promise<void>;
+  signInWithToken: (token: string) => void;
   signOut: () => void;
   refreshUser: () => Promise<void>;
   updateProfile: (data: { displayName: string; photoUrl?: string }) => Promise<void>;
@@ -56,6 +57,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(authUser);
   }, []);
 
+  const signInWithToken = useCallback((token: string) => {
+    setToken(token);
+    // Fetch user profile asynchronously
+    authMe()
+      .then(setUser)
+      .catch(() => { clearToken(); setUser(null); });
+  }, []);
+
   const signOut = useCallback(() => {
     clearToken();
     setUser(null);
@@ -77,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut, refreshUser, updateProfile }),
+    () => ({ user, loading, signIn, signInWithToken, signOut, refreshUser, updateProfile }),
     [loading, refreshUser, signIn, signOut, updateProfile, user]
   );
 

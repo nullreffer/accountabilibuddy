@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
+export const apiUrl = (path: string) => `${API_URL}${path}`;
 const TOKEN_KEY = 'ab_token';
 
 export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY);

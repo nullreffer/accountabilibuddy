@@ -9,7 +9,8 @@ datasource db {
 
 model User {
   id          String   @id @default(uuid())
-  googleId    String   @unique
+  googleId    String?  @unique
+  phone       String?  @unique
   displayName String
   email       String   @unique
   photoUrl    String?
@@ -17,6 +18,8 @@ model User {
   emailVerified       Boolean   @default(true)
   verificationCode    String?
   verificationExpires DateTime?
+  phoneOtp            String?
+  phoneOtpExpires     DateTime?
 
   pushSubscriptions PushSubscription[]
   memberships       GroupMember[]

@@ -7,7 +7,9 @@ interface BeforeInstallPromptEvent extends Event {
 
 const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem('install-dismissed') === '1'; } catch { return false; }
+  });
   const [showIosInstructions, setShowIosInstructions] = useState(false);
   const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -84,7 +86,10 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
         <button className="button button--secondary" onClick={() => void handleInstall()}>
           {canInstallOnIos ? 'Show iPhone steps' : 'Add to Home Screen'}
         </button>
-        <button className="button button--ghost" onClick={() => setDismissed(true)}>
+        <button className="button button--ghost" onClick={() => {
+          setDismissed(true);
+          try { localStorage.setItem('install-dismissed', '1'); } catch { /* ignore */ }
+        }}>
           Dismiss
         </button>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchInvites, createInvite as apiCreateInvite, revokeInvite as apiRevokeInvite, type Invite } from '../lib/api';
+import { apiUrl, fetchInvites, createInvite as apiCreateInvite, revokeInvite as apiRevokeInvite, type Invite } from '../lib/api';
 import LoadingSpinner from './LoadingSpinner';
 
 const InviteManager = ({ groupId, isOwner }: { groupId: string; isOwner: boolean }) => {
@@ -8,6 +8,8 @@ const InviteManager = ({ groupId, isOwner }: { groupId: string; isOwner: boolean
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneBusy, setPhoneBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [lastLink, setLastLink] = useState<string | null>(null);
 
@@ -93,6 +95,36 @@ const InviteManager = ({ groupId, isOwner }: { groupId: string; isOwner: boolean
     }
   };
 
+  const handlePhoneInvite = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const raw = phone.trim();
+    if (!raw) { window.alert('Please enter a phone number.'); return; }
+    try {
+      setPhoneBusy(true);
+      // Generate a shareable invite link then send it via SMS OTP endpoint
+      const result = await apiCreateInvite(groupId, null, false);
+      const inviteUrl = result.inviteUrl ?? `${window.location.origin}/join/${result.token}`;
+      // Send via backend SMS helper
+      const res = await fetch(apiUrl('/api/auth/phone/send-invite'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('ab_token') ?? ''}` },
+        body: JSON.stringify({ phone: raw, inviteUrl })
+      });
+      if (!res.ok) {
+        // Fallback: just show the link
+        window.alert(`SMS not configured yet. Share this link manually:\n${inviteUrl}`);
+      } else {
+        window.alert(`Invite SMS sent to ${raw}!`);
+      }
+      setPhone('');
+    } catch (error) {
+      console.error('Unable to send phone invite', error);
+      window.alert('Unable to send phone invite right now.');
+    } finally {
+      setPhoneBusy(false);
+    }
+  };
+
   if (!isOwner) {
     return <div className="empty-state">Only group leaders can manage invites.</div>;
   }
@@ -136,7 +168,26 @@ const InviteManager = ({ groupId, isOwner }: { groupId: string; isOwner: boolean
       <div className="card">
         <div className="card__header">
           <div>
-            <p className="eyebrow">Pending invites</p>
+            <p className="eyebrow">Phone invite</p>
+            <h3>Invite via SMS</h3>
+          </div>
+        </div>
+        <form className="form-inline" onSubmit={(event) => void handlePhoneInvite(event)}>
+          <input
+            className="input"
+            disabled={phoneBusy}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="+1 555 123 4567"
+            type="tel"
+            value={phone}
+          />
+          <button className="button button--secondary" disabled={phoneBusy} type="submit">
+            Send SMS Invite
+          </button>
+        </form>
+      </div>
+
+      <div className="card">
             <h3>Outstanding links</h3>
           </div>
         </div>

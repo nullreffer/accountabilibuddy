@@ -46,6 +46,7 @@ model Group {
   photoProofRequired Boolean  @default(false)
   jarEnabled         Boolean  @default(false)
   jarAmount          Decimal  @default(0) @db.Decimal(10, 2)
+  checkinType        String   @default("standard")
 
   members   GroupMember[]
   schedules Schedule[]

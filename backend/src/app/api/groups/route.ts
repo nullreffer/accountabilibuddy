@@ -12,6 +12,7 @@ const mapGroup = (group: {
   photoProofRequired: boolean;
   jarEnabled: boolean;
   jarAmount: unknown;
+  checkinType: string;
   _count?: { members: number };
 }) => ({
   id: group.id,
@@ -22,7 +23,8 @@ const mapGroup = (group: {
   settings: {
     photoProofRequired: group.photoProofRequired,
     jarEnabled: group.jarEnabled,
-    jarAmount: Number(group.jarAmount)
+    jarAmount: Number(group.jarAmount),
+    checkinType: group.checkinType as 'standard' | 'timer'
   },
   memberCount: group._count?.members
 });
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest) {
       photoProofRequired?: boolean;
       jarEnabled?: boolean;
       jarAmount?: number;
+      checkinType?: string;
     };
 
     if (!body.name?.trim()) {
@@ -76,6 +79,7 @@ export async function POST(req: NextRequest) {
         photoProofRequired: Boolean(body.photoProofRequired),
         jarEnabled: Boolean(body.jarEnabled),
         jarAmount: body.jarEnabled ? Number(body.jarAmount) : 0,
+        checkinType: body.checkinType ?? 'standard',
         members: {
           create: {
             userId,

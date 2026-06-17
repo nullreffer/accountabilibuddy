@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarFallback } from '../lib/avatar';
 import LoadingSpinner from './LoadingSpinner';
 
-const ChatPanel = ({ groupId }: { groupId: string }) => {
+const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: ReactNode }) => {
   const { user } = useAuth();
   const { messages, loading, sending, send } = useChat(groupId);
   const [text, setText] = useState('');
@@ -75,6 +75,7 @@ const ChatPanel = ({ groupId }: { groupId: string }) => {
       </div>
 
       <form className="chat-composer card" onSubmit={(event) => void handleSubmit(event)}>
+        {checkinSlot ? <div className="chat-composer__checkin">{checkinSlot}</div> : null}
         <input
           aria-label="Message"
           className="input chat-input"

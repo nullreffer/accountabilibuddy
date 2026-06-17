@@ -91,6 +91,7 @@ export interface GroupSettings {
   photoProofRequired: boolean;
   jarEnabled: boolean;
   jarAmount: number;
+  checkinType: 'standard' | 'timer';
 }
 
 export interface Group {
@@ -124,6 +125,7 @@ export const updateGroup = (
     photoProofRequired: boolean;
     jarEnabled: boolean;
     jarAmount: number;
+    checkinType: 'standard' | 'timer';
   }>
 ) => request<Group>('PATCH', `/api/groups/${id}`, data);
 

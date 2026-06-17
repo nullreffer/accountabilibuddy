@@ -14,6 +14,7 @@ const mapGroup = (group: {
   photoProofRequired: boolean;
   jarEnabled: boolean;
   jarAmount: unknown;
+  checkinType: string;
   _count?: { members: number };
 }) => ({
   id: group.id,
@@ -24,7 +25,8 @@ const mapGroup = (group: {
   settings: {
     photoProofRequired: group.photoProofRequired,
     jarEnabled: group.jarEnabled,
-    jarAmount: Number(group.jarAmount)
+    jarAmount: Number(group.jarAmount),
+    checkinType: group.checkinType as 'standard' | 'timer'
   },
   memberCount: group._count?.members
 });
@@ -71,6 +73,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       photoProofRequired?: boolean;
       jarEnabled?: boolean;
       jarAmount?: number;
+      checkinType?: string;
     };
 
     if (body.name !== undefined && !body.name.trim()) {
@@ -84,7 +87,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         ...(body.description !== undefined ? { description: body.description.trim() } : {}),
         ...(body.photoProofRequired !== undefined ? { photoProofRequired: Boolean(body.photoProofRequired) } : {}),
         ...(body.jarEnabled !== undefined ? { jarEnabled: Boolean(body.jarEnabled) } : {}),
-        ...(body.jarAmount !== undefined ? { jarAmount: Number(body.jarAmount) } : {})
+        ...(body.jarAmount !== undefined ? { jarAmount: Number(body.jarAmount) } : {}),
+        ...(body.checkinType !== undefined ? { checkinType: body.checkinType } : {})
       },
       include: { _count: { select: { members: true } } }
     });

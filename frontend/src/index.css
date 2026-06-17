@@ -1307,8 +1307,10 @@ a {
 
 .chat-composer {
   display: flex;
+  align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
+  flex-wrap: wrap;
 }
 
 .chat-input {
@@ -1381,19 +1383,91 @@ a {
   }
 }
 
-/* ---- Group page title ---- */
+/* ---- Group page title with back glyph ---- */
 
-.group-page-title {
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
+.group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-/* ---- Notifications timing grid ---- */
+.back-glyph {
+  font-size: 1.25rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ---- Member check-in status row ---- */
+
+.member-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.member-status-avatar {
+  position: relative;
+  display: inline-flex;
+}
+
+.avatar--xs {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #e5e7eb;
+}
+
+.member-status-check {
+  position: absolute;
+  bottom: -2px;
+  right: -3px;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: #fff;
+  background: #10b981;
+  border-radius: 999px;
+  width: 0.9rem;
+  height: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border: 1.5px solid var(--surface);
+}
+
+/* ---- Chat composer check-in slot ---- */
+
+.chat-composer__checkin {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.checkin-slot-done {
+  font-size: 1rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.timer-display--sm {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  min-width: 3rem;
+  text-align: center;
+}
+
+/* ---- Notif timing grid ---- */
 
 .notif-timing-grid {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  padding-left: 0.25rem;
 }
+
 

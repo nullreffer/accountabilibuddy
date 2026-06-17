@@ -10,7 +10,7 @@ const CheckinFeed = ({ groupId }: { groupId: string }) => {
   }
 
   if (!checkins.length) {
-    return <div className="empty-state">No check-ins yet. Be the first to keep the streak alive.</div>;
+    return null;
   }
 
   return (

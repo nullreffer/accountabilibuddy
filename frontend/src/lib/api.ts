@@ -162,7 +162,7 @@ export const pokeMember = (groupId: string, uid: string) =>
 export interface Schedule {
   id: string;
   name: string;
-  frequency: 'daily' | 'weekly' | 'custom';
+  frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
   daysOfWeek: number[];
   time: string;
   timezone: string;

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { createGroup, createInvite, createSchedule } from '../lib/api';
 
-type Frequency = 'daily' | 'weekly' | 'custom';
+type Frequency = 'daily' | 'weekly' | 'monthly' | 'custom';
 type StepKey = 'template' | 'group' | 'schedule' | 'invite';
 
 interface ScheduleDraft {
@@ -81,6 +81,10 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const formatScheduleLabel = (schedule: ScheduleDraft) => {
   if (schedule.frequency === 'daily') return `${schedule.name} · Daily at ${schedule.time}`;
+  if (schedule.frequency === 'monthly') {
+    const day = schedule.daysOfWeek[0] ?? 1;
+    return `${schedule.name} · Monthly on day ${day} at ${schedule.time}`;
+  }
   const days = schedule.daysOfWeek.map((day) => DAY_LABELS[day]).join(', ');
   return `${schedule.name} · ${days} at ${schedule.time}`;
 };
@@ -117,6 +121,7 @@ const CreateGroupForm = ({
   const [scheduleFrequency, setScheduleFrequency] = useState<Frequency>('weekly');
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [scheduleTime, setScheduleTime] = useState('08:00');
+  const [scheduleDayOfMonth, setScheduleDayOfMonth] = useState(1);
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [openStep, setOpenStep] = useState<StepKey | null>('template');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -171,8 +176,8 @@ const CreateGroupForm = ({
       return;
     }
 
-    if (scheduleFrequency === 'weekly' && scheduleDays.length === 0) {
-      window.alert('Pick at least one day for weekly schedules.');
+    if ((scheduleFrequency === 'weekly' || scheduleFrequency === 'custom') && scheduleDays.length === 0) {
+      window.alert('Pick at least one day for weekly/custom schedules.');
       return;
     }
 
@@ -181,7 +186,12 @@ const CreateGroupForm = ({
       {
         name: scheduleName.trim(),
         frequency: scheduleFrequency,
-        daysOfWeek: scheduleFrequency === 'daily' ? [] : scheduleDays,
+        daysOfWeek:
+          scheduleFrequency === 'daily'
+            ? []
+            : scheduleFrequency === 'monthly'
+              ? [scheduleDayOfMonth]
+              : scheduleDays,
         time: scheduleTime
       }
     ]);
@@ -189,6 +199,7 @@ const CreateGroupForm = ({
     setScheduleDays([]);
     setScheduleTime('08:00');
     setScheduleFrequency('weekly');
+    setScheduleDayOfMonth(1);
   };
 
   const removeSchedule = (index: number) => {
@@ -260,8 +271,12 @@ const CreateGroupForm = ({
       });
 
       if (schedules.length > 0) {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        await Promise.all(schedules.map((schedule) => createSchedule(group.id, { ...schedule, timezone })));
+        try {
+          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          await Promise.all(schedules.map((schedule) => createSchedule(group.id, { ...schedule, timezone })));
+        } catch {
+          window.alert('Group created, but some schedules could not be saved. You can add them from the group settings.');
+        }
       }
 
       if (inviteEmails.length > 0) {
@@ -480,6 +495,8 @@ const CreateGroupForm = ({
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="custom">Custom days</option>
                     </select>
                   </label>
                   <label className="field">
@@ -488,9 +505,23 @@ const CreateGroupForm = ({
                   </label>
                 </div>
 
-                {scheduleFrequency === 'weekly' ? (
+                {scheduleFrequency === 'monthly' ? (
+                  <label className="field field--full">
+                    <span>Day of month</span>
+                    <input
+                      className="input"
+                      type="number"
+                      min="1"
+                      max="28"
+                      value={scheduleDayOfMonth}
+                      onChange={(event) => setScheduleDayOfMonth(Number(event.target.value))}
+                    />
+                  </label>
+                ) : null}
+
+                {scheduleFrequency === 'weekly' || scheduleFrequency === 'custom' ? (
                   <div className="field field--full">
-                    <span className="field__label">Days</span>
+                    <span className="field__label">Days <span className="helper-text" style={{ fontWeight: 'normal' }}>(select one or more)</span></span>
                     <div className="day-picker">
                       {DAY_LABELS.map((label, day) => (
                         <button

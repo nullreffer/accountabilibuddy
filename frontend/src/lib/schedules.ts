@@ -41,6 +41,10 @@ const getLocalParts = (date: Date, timezone = 'UTC') => {
 
 const isScheduledForToday = (schedule: Schedule, date: Date) => {
   const local = getLocalParts(date, schedule.timezone);
+  if (schedule.frequency === 'monthly') {
+    const dayOfMonth = new Date(local.dateKey).getDate();
+    return schedule.daysOfWeek[0] === dayOfMonth;
+  }
   if (schedule.frequency === 'weekly' || schedule.frequency === 'custom') {
     return schedule.daysOfWeek.includes(local.weekday);
   }

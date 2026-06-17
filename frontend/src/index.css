@@ -764,6 +764,55 @@ a {
   width: 100%;
 }
 
+.apple-auth {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  justify-items: center;
+}
+
+/* Apple sign-in button — matches Apple HIG: black background, white text */
+.button--apple {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #000;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  transition: opacity 0.15s;
+}
+
+.button--apple:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.button--apple:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme='dark'] .button--apple {
+  background: #fff;
+  color: #000;
+}
+
+/* ---- Schedule calendar export row ---- */
+
+.schedule-export-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .auth-hint {
   font-size: 0.85rem;
   color: var(--text-secondary);

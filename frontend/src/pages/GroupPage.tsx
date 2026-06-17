@@ -14,7 +14,7 @@ import { useCheckins } from '../hooks/useCheckins';
 import { useGroup } from '../hooks/useGroup';
 import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
-import { createCheckin, updateGroup, deleteGroup } from '../lib/api';
+import { createCheckin, updateGroup, deleteGroup, scheduleIcsUrl } from '../lib/api';
 import { getAvatarFallback } from '../lib/avatar';
 
 const tabs = ['chat', 'jar'] as const;
@@ -615,16 +615,42 @@ const GroupPage = () => {
 
                 {schedulesLoading ? <LoadingSpinner label="Loading schedules..." /> : null}
                 {schedules.length ? (
-                  <div className="stack-md">
-                    {schedules.map((schedule) => (
-                      <ScheduleCard
-                        canEdit={canManage}
-                        key={schedule.id}
-                        onDelete={() => void handleDeleteSchedule(schedule.id)}
-                        schedule={schedule}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="schedule-export-row">
+                      <a
+                        className="button button--ghost button--small"
+                        download
+                        href={scheduleIcsUrl(groupId)}
+                        rel="noreferrer"
+                      >
+                        📥 Download .ics
+                      </a>
+                      <a
+                        className="button button--ghost button--small"
+                        href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(scheduleIcsUrl(groupId).replace(/^https?:/, 'webcal:'))}`}
+                        rel="noreferrer noopener"
+                        target="_blank"
+                      >
+                        📅 Add to Google Calendar
+                      </a>
+                      <a
+                        className="button button--ghost button--small"
+                        href={scheduleIcsUrl(groupId).replace(/^https?:/, 'webcal:')}
+                      >
+                        🍎 Subscribe in iCal
+                      </a>
+                    </div>
+                    <div className="stack-md">
+                      {schedules.map((schedule) => (
+                        <ScheduleCard
+                          canEdit={canManage}
+                          key={schedule.id}
+                          onDelete={() => void handleDeleteSchedule(schedule.id)}
+                          schedule={schedule}
+                        />
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className="empty-state">No schedules yet.</div>
                 )}

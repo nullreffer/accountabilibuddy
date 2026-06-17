@@ -10,6 +10,7 @@ datasource db {
 model User {
   id          String   @id @default(uuid())
   googleId    String?  @unique
+  appleId     String?  @unique
   phone       String?  @unique
   displayName String
   email       String   @unique

@@ -274,7 +274,8 @@ const CreateGroupForm = ({
         try {
           const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           await Promise.all(schedules.map((schedule) => createSchedule(group.id, { ...schedule, timezone })));
-        } catch {
+        } catch (scheduleError) {
+          console.error('Unable to save schedules for group', group.id, scheduleError);
           window.alert('Group created, but some schedules could not be saved. You can add them from the group settings.');
         }
       }
@@ -512,10 +513,11 @@ const CreateGroupForm = ({
                       className="input"
                       type="number"
                       min="1"
-                      max="28"
+                      max="31"
                       value={scheduleDayOfMonth}
                       onChange={(event) => setScheduleDayOfMonth(Number(event.target.value))}
                     />
+                    <span className="helper-text">Days 29–31 will be skipped in shorter months.</span>
                   </label>
                 ) : null}
 

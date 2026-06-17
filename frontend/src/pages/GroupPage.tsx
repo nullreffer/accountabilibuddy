@@ -75,8 +75,7 @@ const GroupPage = () => {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('chat');
   const [activeModal, setActiveModal] = useState<'members' | 'settings' | 'notifications' | 'chart' | 'schedules' | null>(null);
 
-  // Check-in state
-  const [checkinMode, setCheckinMode] = useState<'standard' | 'timer'>('standard');
+  // Check-in state (checkinType comes from group settings, not local state)
   const [timerStartTime, setTimerStartTime] = useState<number | null>(() => {
     const stored = localStorage.getItem(timerKey(groupId));
     return stored ? parseInt(stored, 10) : null;
@@ -140,7 +139,6 @@ const GroupPage = () => {
     if (todaysCheckin && timerStartTime) {
       localStorage.removeItem(timerKey(groupId));
       setTimerStartTime(null);
-      setCheckinMode('standard');
     }
   }, [todaysCheckin, timerStartTime, groupId]);
 
@@ -171,7 +169,6 @@ const GroupPage = () => {
   const handleTimerCancel = () => {
     localStorage.removeItem(timerKey(groupId));
     setTimerStartTime(null);
-    setCheckinMode('standard');
   };
 
   const handleCheckIn = async (durationSeconds?: number) => {
@@ -191,7 +188,6 @@ const GroupPage = () => {
       if (durationSeconds !== undefined) {
         localStorage.removeItem(timerKey(groupId));
         setTimerStartTime(null);
-        setCheckinMode('standard');
       }
     } catch (error) {
       console.error('Unable to check in', error);

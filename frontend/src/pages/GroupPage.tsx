@@ -16,11 +16,32 @@ import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
 import { createCheckin, updateGroup, deleteGroup } from '../lib/api';
 
-const tabs = ['overview', 'chat', 'chart', 'schedules', 'jar'] as const;
+const tabs = ['chat', 'jar'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'];
 
 const todayKey = () => new Date().toISOString().split('T')[0];
+
+const timerKey = (gid: string) => `ab_timer_start_${gid}`;
+
+const formatDuration = (seconds: number) => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
+interface NotifPrefs { email: boolean; push: boolean; timing: string[] }
+const defaultNotifPrefs = (): NotifPrefs => ({ email: false, push: true, timing: ['1hr'] });
+const loadNotifPrefs = (gid: string, uid: string): NotifPrefs => {
+  try {
+    const raw = localStorage.getItem(`ab_notif_${gid}_${uid}`);
+    return raw ? (JSON.parse(raw) as NotifPrefs) : defaultNotifPrefs();
+  } catch { return defaultNotifPrefs(); }
+};
+const saveNotifPrefs = (gid: string, uid: string, prefs: NotifPrefs) =>
+  localStorage.setItem(`ab_notif_${gid}_${uid}`, JSON.stringify(prefs));
 
 const GroupPage = () => {
   const { groupId = '' } = useParams();
@@ -30,23 +51,38 @@ const GroupPage = () => {
   const { members } = useMembers(groupId);
   const { schedules, loading: schedulesLoading } = useSchedules(groupId);
   const { checkins, loading: checkinsLoading } = useCheckins(groupId, 50);
-  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('overview');
-  const [activeModal, setActiveModal] = useState<'members' | 'invites' | 'settings' | null>(null);
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('chat');
+  const [activeModal, setActiveModal] = useState<'members' | 'settings' | 'notifications' | 'chart' | null>(null);
+
+  // Check-in state
+  const [checkinMode, setCheckinMode] = useState<'standard' | 'timer'>('standard');
+  const [timerStartTime, setTimerStartTime] = useState<number | null>(() => {
+    const stored = localStorage.getItem(timerKey(groupId));
+    return stored ? parseInt(stored, 10) : null;
+  });
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedScheduleId, setSelectedScheduleId] = useState('manual');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [checkinLoading, setCheckinLoading] = useState(false);
+
+  // Schedule form state
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'custom'>('daily');
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
   const [time, setTime] = useState('09:00');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+
+  // Settings form state
   const [settingsName, setSettingsName] = useState('');
   const [settingsDescription, setSettingsDescription] = useState('');
   const [settingsJarEnabled, setSettingsJarEnabled] = useState(false);
   const [settingsJarAmount, setSettingsJarAmount] = useState('0');
   const [settingsPhotoProof, setSettingsPhotoProof] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
+
+  // Notification prefs state
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(defaultNotifPrefs);
 
   const canManage = member?.role === 'owner' || member?.role === 'coowner';
   const isOwner = member?.role === 'owner';
@@ -56,6 +92,29 @@ const GroupPage = () => {
     () => checkins.find((checkin) => checkin.uid === user?.id && checkin.date === today && checkin.status === 'completed'),
     [checkins, today, user?.id]
   );
+
+  // Load notification prefs when user/group are available
+  useEffect(() => {
+    if (user && groupId) setNotifPrefs(loadNotifPrefs(groupId, user.id));
+  }, [groupId, user]);
+
+  // Timer interval – counts up using wall-clock diff so background doesn't matter
+  useEffect(() => {
+    if (!timerStartTime) { setElapsedSeconds(0); return; }
+    const update = () => setElapsedSeconds(Math.floor((Date.now() - timerStartTime) / 1000));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [timerStartTime]);
+
+  // If today's check-in is already done, clear any in-progress timer
+  useEffect(() => {
+    if (todaysCheckin && timerStartTime) {
+      localStorage.removeItem(timerKey(groupId));
+      setTimerStartTime(null);
+      setCheckinMode('standard');
+    }
+  }, [todaysCheckin, timerStartTime, groupId]);
 
   useEffect(() => {
     if (group) {
@@ -74,10 +133,20 @@ const GroupPage = () => {
     setDaysOfWeek((current) => (current.includes(day) ? current.filter((item) => item !== day) : [...current, day].sort()));
   };
 
-  const handleCheckIn = async () => {
-    if (!group || !user) {
-      return;
-    }
+  const handleTimerStart = () => {
+    const now = Date.now();
+    localStorage.setItem(timerKey(groupId), String(now));
+    setTimerStartTime(now);
+  };
+
+  const handleTimerCancel = () => {
+    localStorage.removeItem(timerKey(groupId));
+    setTimerStartTime(null);
+    setCheckinMode('standard');
+  };
+
+  const handleCheckIn = async (durationSeconds?: number) => {
+    if (!group || !user) return;
 
     if (group.settings.photoProofRequired && !photoFile) {
       window.alert('This group requires photo proof for check-ins.');
@@ -90,12 +159,28 @@ const GroupPage = () => {
       setCheckinLoading(true);
       await createCheckin(groupId, scheduleId, photoFile);
       setPhotoFile(null);
+      if (durationSeconds !== undefined) {
+        localStorage.removeItem(timerKey(groupId));
+        setTimerStartTime(null);
+        setCheckinMode('standard');
+      }
     } catch (error) {
       console.error('Unable to check in', error);
       window.alert('Unable to save your check-in right now.');
     } finally {
       setCheckinLoading(false);
     }
+  };
+
+  const handleTimerDone = () => {
+    if (!timerStartTime) return;
+    void handleCheckIn(Math.floor((Date.now() - timerStartTime) / 1000));
+  };
+
+  const handleSaveNotifPrefs = (prefs: NotifPrefs) => {
+    if (!user) return;
+    setNotifPrefs(prefs);
+    saveNotifPrefs(groupId, user.id, prefs);
   };
 
   const handleCreateSchedule = async (event: FormEvent<HTMLFormElement>) => {
@@ -204,36 +289,90 @@ const GroupPage = () => {
     <div className="page page--wide stack-xl">
       <InstallPrompt />
       <Link className="back-link" to="/dashboard">
-        ← Back to dashboard
+        ← Back
       </Link>
 
       <section className="hero-card hero-card--compact">
         <div>
-          <p className="eyebrow">Group</p>
-          <h1>{group.name}</h1>
-          <p className="hero-card__text">{group.description || 'No description yet.'}</p>
-        </div>
-        <div className="group-actions">
+          <h2 className="group-page-title">{group.name}</h2>
           <div className="hero-card__stats">
             <span className="badge badge--neutral">{members.length} members</span>
-            <span className="badge badge--success">Your role: {member.role}</span>
-          </div>
-          <div className="group-actions__icons">
-            <button aria-label="Open members" className="icon-btn" onClick={() => setActiveModal('members')} title="Members" type="button">
-              👥
-            </button>
-            {canManage ? (
-              <button aria-label="Open invites" className="icon-btn" onClick={() => setActiveModal('invites')} title="Invites" type="button">
-                ✉️
-              </button>
-            ) : null}
-            {canManage ? (
-              <button aria-label="Open settings" className="icon-btn" onClick={() => setActiveModal('settings')} title="Settings" type="button">
-                ⚙️
-              </button>
-            ) : null}
+            <span className="badge badge--success">{member.role}</span>
           </div>
         </div>
+        <div className="group-actions__icons">
+          <button aria-label="Members" className="icon-btn" onClick={() => setActiveModal('members')} title="Members" type="button">
+            👥
+          </button>
+          <button aria-label="Notifications" className="icon-btn" onClick={() => setActiveModal('notifications')} title="Notifications" type="button">
+            🔔
+          </button>
+          <button aria-label="Progress chart" className="icon-btn" onClick={() => setActiveModal('chart')} title="Progress chart" type="button">
+            📊
+          </button>
+          {canManage ? (
+            <button aria-label="Settings" className="icon-btn" onClick={() => setActiveModal('settings')} title="Settings" type="button">
+              ⚙️
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      {/* Check-in bar */}
+      <section className="card checkin-bar-card">
+        {!todaysCheckin ? (
+          <>
+            {checkinMode === 'standard' ? (
+              <div className="checkin-bar">
+                {schedules.length > 1 ? (
+                  <select className="input checkin-bar__select" onChange={(e) => setSelectedScheduleId(e.target.value)} value={selectedScheduleId}>
+                    {schedules.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                ) : null}
+                {group.settings.photoProofRequired ? (
+                  <label className="checkin-bar__file field">
+                    <span>Photo</span>
+                    <input accept="image/*" className="input" type="file" onChange={(e) => setPhotoFile(e.target.files?.[0] || null)} />
+                  </label>
+                ) : null}
+                <button className="button button--primary" disabled={checkinLoading} onClick={() => void handleCheckIn()} type="button">
+                  {checkinLoading ? 'Saving…' : 'Check In'}
+                </button>
+                <button className="button button--ghost" onClick={() => setCheckinMode('timer')} type="button">
+                  ⏱ Timer
+                </button>
+              </div>
+            ) : !timerStartTime ? (
+              <div className="checkin-bar">
+                <span className="checkin-bar__label">Timer mode</span>
+                {group.settings.photoProofRequired ? (
+                  <label className="checkin-bar__file field">
+                    <span>Photo</span>
+                    <input accept="image/*" className="input" type="file" onChange={(e) => setPhotoFile(e.target.files?.[0] || null)} />
+                  </label>
+                ) : null}
+                <button className="button button--primary" onClick={handleTimerStart} type="button">
+                  ▶ Start
+                </button>
+                <button className="button button--ghost" onClick={handleTimerCancel} type="button">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="checkin-bar">
+                <span className="timer-display">{formatDuration(elapsedSeconds)}</span>
+                <button className="button button--secondary" disabled={checkinLoading} onClick={() => void handleTimerDone()} type="button">
+                  {checkinLoading ? 'Saving…' : '✓ Done'}
+                </button>
+                <button className="button button--ghost" onClick={handleTimerCancel} type="button">
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="status-pill status-pill--success">✅ Checked in today</span>
+        )}
       </section>
 
       <div className="tab-strip" role="tablist" aria-label="Group sections">
@@ -251,181 +390,25 @@ const GroupPage = () => {
           ))}
       </div>
 
-      {activeTab === 'overview' ? (
-        <section className="grid grid--two-thirds">
-          <div className="card stack-lg">
-            <div>
-              <p className="eyebrow">Today</p>
-              <h2>Ready to check in?</h2>
-              <p>{todaysCheckin ? 'You already completed today\'s check-in. Great job.' : 'Keep your promise to the group.'}</p>
-            </div>
-            <div className="stack-md">
-              {schedules.length > 1 ? (
-                <label className="field">
-                  <span>Schedule</span>
-                  <select className="input" onChange={(event) => setSelectedScheduleId(event.target.value)} value={selectedScheduleId}>
-                    {schedules.map((schedule) => (
-                      <option key={schedule.id} value={schedule.id}>
-                        {schedule.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {group.settings.photoProofRequired ? (
-                <label className="field">
-                  <span>Photo proof</span>
-                  <input
-                    accept="image/*"
-                    className="input"
-                    onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
-                    type="file"
-                  />
-                </label>
-              ) : null}
-              <button
-                className="button button--primary button--large"
-                disabled={Boolean(todaysCheckin) || checkinLoading}
-                onClick={() => void handleCheckIn()}
-              >
-                {checkinLoading ? 'Saving check-in...' : todaysCheckin ? 'Checked in today' : 'Check In'}
-              </button>
-            </div>
-          </div>
-          <div className="card stack-md">
-            <div>
-              <p className="eyebrow">Status</p>
-              <h2>Your progress</h2>
-            </div>
-            <div className="stat-block">
-              <span className={`status-pill ${todaysCheckin ? 'status-pill--success' : 'status-pill--warning'}`}>
-                {todaysCheckin ? 'Completed today' : 'Awaiting check-in'}
-              </span>
-            </div>
-            <div className="list-group">
-              <div className="list-group__item">
-                <div>
-                  <p>Photo proof required</p>
-                  <p className="helper-text">{group.settings.photoProofRequired ? 'Yes' : 'No'}</p>
-                </div>
-              </div>
-              <div className="list-group__item">
-                <div>
-                  <p>Jar status</p>
-                  <p className="helper-text">
-                    {group.settings.jarEnabled ? `$${group.settings.jarAmount.toFixed(2)} per miss` : 'Disabled'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       {activeTab === 'chat' ? (
-        <section className="grid grid--two-thirds">
+        <div className="chat-layout">
           <ChatPanel groupId={groupId} />
-          <section className="card stack-md">
-            <div>
-              <p className="eyebrow">Notifications</p>
-              <h2>Recent activity</h2>
-            </div>
-            <CheckinFeed groupId={groupId} />
-          </section>
-        </section>
-      ) : null}
-      {activeTab === 'chart' ? <GroupHistoryChart groupId={groupId} /> : null}
-
-      {activeTab === 'schedules' ? (
-        <section className="stack-lg">
-          <div className="card card__header">
-            <div>
-              <p className="eyebrow">Schedules</p>
-              <h2>Reminder cadence</h2>
-            </div>
-            {canManage ? (
-              <button className="button button--secondary" onClick={() => setScheduleFormOpen((current) => !current)}>
-                {scheduleFormOpen ? 'Close' : 'Add Schedule'}
-              </button>
-            ) : null}
-          </div>
-
-          {scheduleFormOpen ? (
-            <form className="card form-grid" onSubmit={(event) => void handleCreateSchedule(event)}>
-              <label className="field">
-                <span>Name</span>
-                <input className="input" onChange={(event) => setScheduleName(event.target.value)} value={scheduleName} />
-              </label>
-              <label className="field">
-                <span>Frequency</span>
-                <select className="input" onChange={(event) => setFrequency(event.target.value as 'daily' | 'weekly' | 'custom')} value={frequency}>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              {(frequency === 'weekly' || frequency === 'custom') ? (
-                <div className="field field--full">
-                  <span>Days of week</span>
-                  <div className="checkbox-grid">
-                    {dayNames.map((label, index) => (
-                      <label className="checkbox-pill" key={label}>
-                        <input checked={daysOfWeek.includes(index)} onChange={() => toggleDay(index)} type="checkbox" />
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <label className="field">
-                <span>Time</span>
-                <input className="input" onChange={(event) => setTime(event.target.value)} type="time" value={time} />
-              </label>
-              <label className="field">
-                <span>Timezone</span>
-                <select className="input" onChange={(event) => setTimezone(event.target.value)} value={timezone}>
-                  {timezones.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button className="button button--primary" type="submit">
-                Save Schedule
-              </button>
-            </form>
-          ) : null}
-
-          {schedulesLoading ? <LoadingSpinner label="Loading schedules..." /> : null}
-          {schedules.length ? (
-            <div className="stack-md">
-              {schedules.map((schedule) => (
-                <ScheduleCard
-                  canEdit={canManage}
-                  key={schedule.id}
-                  onDelete={() => void handleDeleteSchedule(schedule.id)}
-                  schedule={schedule}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">No schedules yet.</div>
-          )}
-        </section>
+          <CheckinFeed groupId={groupId} />
+        </div>
       ) : null}
 
       {activeTab === 'jar' && group.settings.jarEnabled ? <JarDisplay groupId={groupId} isOwner={isOwner} /> : null}
+
       {activeModal ? (
         <div aria-modal="true" className="modal-backdrop" onClick={() => setActiveModal(null)} role="dialog">
           <section className="modal-sheet card stack-lg" onClick={(event) => event.stopPropagation()}>
             <div className="card__header">
               <div>
                 <p className="eyebrow">
-                  {activeModal === 'members' ? 'Members' : activeModal === 'invites' ? 'Invites' : 'Settings'}
+                  {activeModal === 'members' ? 'Members' : activeModal === 'settings' ? 'Settings' : activeModal === 'notifications' ? 'Notifications' : 'Progress'}
                 </p>
                 <h2>
-                  {activeModal === 'members' ? 'Manage members' : activeModal === 'invites' ? 'Invite people' : 'Group settings'}
+                  {activeModal === 'members' ? 'Manage members' : activeModal === 'settings' ? 'Group settings' : activeModal === 'notifications' ? 'My notifications' : 'Group chart'}
                 </h2>
               </div>
               <button aria-label="Close modal" className="icon-btn" onClick={() => setActiveModal(null)} type="button">
@@ -433,8 +416,76 @@ const GroupPage = () => {
               </button>
             </div>
 
-            {activeModal === 'members' ? <MemberList currentUserRole={member.role} groupId={groupId} /> : null}
-            {activeModal === 'invites' ? <InviteManager groupId={groupId} isOwner={canManage} /> : null}
+            {activeModal === 'members' ? (
+              <div className="stack-lg">
+                <MemberList currentUserRole={member.role} groupId={groupId} />
+                {canManage ? (
+                  <section className="stack-md">
+                    <div>
+                      <p className="eyebrow">Invite</p>
+                      <h3>Add members</h3>
+                    </div>
+                    <InviteManager groupId={groupId} isOwner={canManage} />
+                  </section>
+                ) : null}
+              </div>
+            ) : null}
+
+            {activeModal === 'notifications' ? (
+              <div className="stack-lg">
+                <div className="stack-md">
+                  <p className="eyebrow">Channels</p>
+                  <label className="switch-card">
+                    <input
+                      checked={notifPrefs.email}
+                      onChange={(e) => handleSaveNotifPrefs({ ...notifPrefs, email: e.target.checked })}
+                      type="checkbox"
+                    />
+                    <div>
+                      <strong>Email notifications</strong>
+                      <p>Get an email reminder when a schedule is due.</p>
+                    </div>
+                  </label>
+                  <label className="switch-card">
+                    <input
+                      checked={notifPrefs.push}
+                      onChange={(e) => handleSaveNotifPrefs({ ...notifPrefs, push: e.target.checked })}
+                      type="checkbox"
+                    />
+                    <div>
+                      <strong>App notifications</strong>
+                      <p>Receive push notifications on this device.</p>
+                    </div>
+                  </label>
+                </div>
+                <div className="stack-md">
+                  <p className="eyebrow">Timing</p>
+                  <p className="helper-text">Remind me before a check-in is due:</p>
+                  <div className="notif-timing-grid">
+                    {(['5min', '1hr', '1day'] as const).map((t) => {
+                      const labels: Record<string, string> = { '5min': '5 min before', '1hr': '1 hr before', '1day': '1 day before' };
+                      const checked = notifPrefs.timing.includes(t);
+                      return (
+                        <label className="checkbox-pill" key={t}>
+                          <input
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked ? notifPrefs.timing.filter((x) => x !== t) : [...notifPrefs.timing, t];
+                              handleSaveNotifPrefs({ ...notifPrefs, timing: next });
+                            }}
+                            type="checkbox"
+                          />
+                          <span>{labels[t]}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {activeModal === 'chart' ? <GroupHistoryChart groupId={groupId} /> : null}
+
             {activeModal === 'settings' ? (
               <section className="stack-lg">
                 <form className="form-grid" onSubmit={(event) => void handleSaveSettings(event)}>
@@ -490,17 +541,86 @@ const GroupPage = () => {
                     <button className="button button--primary" disabled={settingsSaving} type="submit">
                       {settingsSaving ? 'Saving...' : 'Save Settings'}
                     </button>
-                    <Link className="button button--ghost" to={`/group/${groupId}/settings`}>
-                      Open full settings page
-                    </Link>
                   </div>
                 </form>
+
+                {/* Schedules */}
+                <section className="stack-lg">
+                  <div className="card__header">
+                    <div>
+                      <p className="eyebrow">Schedules</p>
+                      <h3>Reminder cadence</h3>
+                    </div>
+                    {canManage ? (
+                      <button className="button button--secondary button--small" onClick={() => setScheduleFormOpen((c) => !c)} type="button">
+                        {scheduleFormOpen ? 'Close' : 'Add Schedule'}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {scheduleFormOpen ? (
+                    <form className="form-grid" onSubmit={(event) => void handleCreateSchedule(event)}>
+                      <label className="field">
+                        <span>Name</span>
+                        <input className="input" onChange={(e) => setScheduleName(e.target.value)} value={scheduleName} />
+                      </label>
+                      <label className="field">
+                        <span>Frequency</span>
+                        <select className="input" onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly' | 'custom')} value={frequency}>
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="custom">Custom</option>
+                        </select>
+                      </label>
+                      {(frequency === 'weekly' || frequency === 'custom') ? (
+                        <div className="field field--full">
+                          <span>Days of week</span>
+                          <div className="checkbox-grid">
+                            {dayNames.map((label, index) => (
+                              <label className="checkbox-pill" key={label}>
+                                <input checked={daysOfWeek.includes(index)} onChange={() => toggleDay(index)} type="checkbox" />
+                                <span>{label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <label className="field">
+                        <span>Time</span>
+                        <input className="input" onChange={(e) => setTime(e.target.value)} type="time" value={time} />
+                      </label>
+                      <label className="field">
+                        <span>Timezone</span>
+                        <select className="input" onChange={(e) => setTimezone(e.target.value)} value={timezone}>
+                          {timezones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                        </select>
+                      </label>
+                      <button className="button button--primary" type="submit">Save Schedule</button>
+                    </form>
+                  ) : null}
+
+                  {schedulesLoading ? <LoadingSpinner label="Loading schedules..." /> : null}
+                  {schedules.length ? (
+                    <div className="stack-md">
+                      {schedules.map((schedule) => (
+                        <ScheduleCard
+                          canEdit={canManage}
+                          key={schedule.id}
+                          onDelete={() => void handleDeleteSchedule(schedule.id)}
+                          schedule={schedule}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">No schedules yet.</div>
+                  )}
+                </section>
 
                 <section className="card danger-zone stack-md">
                   <div>
                     <p className="eyebrow">Danger zone</p>
                     <h2>Delete group</h2>
-                    <p>This permanently removes the group document and its subcollections.</p>
+                    <p>This permanently removes the group and all its data.</p>
                   </div>
                   <button className="button button--danger" disabled={!isOwner} onClick={() => void handleDeleteGroup()}>
                     Delete Group

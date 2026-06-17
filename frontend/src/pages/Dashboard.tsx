@@ -51,14 +51,6 @@ const Dashboard = () => {
 
   return (
     <div className="page page--wide stack-xl">
-      <section className="card dashboard-header">
-        <div>
-          <p className="eyebrow">Dashboard</p>
-          <h1>Your accountability groups</h1>
-          <p className="hero-card__text">Pick a group and jump straight back into your check-ins, chat, and progress.</p>
-        </div>
-      </section>
-
       {groups.length ? (
         <section className="dashboard-group-list" aria-label="Your groups">
           {groups.map((group) => (

@@ -109,6 +109,24 @@
   background: rgba(245, 158, 11, 0.2);
 }
 
+[data-theme='dark'] .modal-sheet {
+  color: var(--text);
+}
+
+[data-theme='dark'] .modal-sheet strong {
+  color: var(--text);
+}
+
+[data-theme='dark'] .modal-sheet .switch-card {
+  color: var(--text);
+}
+
+[data-theme='dark'] .checkin-bar-card .input {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1296,3 +1314,86 @@ a {
 .chat-input {
   flex: 1;
 }
+
+/* ---- Group page – check-in bar ---- */
+
+.checkin-bar-card {
+  padding: 1rem 1.5rem;
+}
+
+.checkin-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-height: 2.75rem;
+}
+
+.checkin-bar__label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.checkin-bar__select {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.checkin-bar__file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.checkin-bar__file span {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.checkin-bar__file .input {
+  width: auto;
+}
+
+/* ---- Timer display ---- */
+
+.timer-display {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  min-width: 5rem;
+  text-align: center;
+}
+
+/* ---- Group page – chat layout ---- */
+
+.chat-layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+}
+
+@media (max-width: 900px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Group page title ---- */
+
+.group-page-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+/* ---- Notifications timing grid ---- */
+
+.notif-timing-grid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+

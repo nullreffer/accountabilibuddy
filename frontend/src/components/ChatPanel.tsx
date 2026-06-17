@@ -31,13 +31,6 @@ const ChatPanel = ({ groupId }: { groupId: string }) => {
 
   return (
     <section className="chat-panel stack-lg">
-      <div className="card card__header">
-        <div>
-          <p className="eyebrow">Group chat</p>
-          <h2>Chat &amp; activity</h2>
-        </div>
-      </div>
-
       <div className="chat-messages card" aria-live="polite" aria-label="Chat messages">
         {messages.length === 0 ? (
           <p className="chat-empty">No messages yet. Say hello!</p>

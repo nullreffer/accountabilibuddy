@@ -138,7 +138,7 @@ const LoginPage = () => {
                   setGoogleError('');
                   signIn(credentialResponse.credential)
                     .then(() => { navigate('/dashboard', { replace: true }); })
-                    .catch(() => { setGoogleError('Sign-in failed. Please try again.'); });
+                    .catch((err) => { console.error('Google sign-in error:', err); setGoogleError('Sign-in failed. Please try again.'); });
                 }
               }}
               onError={() => { setGoogleError('Google sign-in failed. Please try again.'); }}

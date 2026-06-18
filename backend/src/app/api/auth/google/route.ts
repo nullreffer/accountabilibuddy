@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         displayName: payload.name ?? 'AccountabiliBuddy User',
         email: payload.email,
         photoUrl: payload.picture ?? null,
-        ...(googleEmailVerified && { emailVerified: true })
+        emailVerified: googleEmailVerified
       },
       create: {
         googleId: payload.sub,

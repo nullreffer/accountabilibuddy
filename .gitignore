@@ -1,5 +1,7 @@
 node_modules
 dist
+.next
+backend/.next
 .env
 .env.*
 !.env.example

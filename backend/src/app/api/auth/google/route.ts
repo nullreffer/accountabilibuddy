@@ -24,19 +24,23 @@ export async function POST(req: NextRequest) {
       return badRequest('Invalid Google token');
     }
 
+    // Google verifies email addresses — trust the email_verified claim from the ID token
+    const googleEmailVerified = payload.email_verified !== false;
+
     const user = await prisma.user.upsert({
       where: { googleId: payload.sub },
       update: {
         displayName: payload.name ?? 'AccountabiliBuddy User',
         email: payload.email,
-        photoUrl: payload.picture ?? null
+        photoUrl: payload.picture ?? null,
+        ...(googleEmailVerified && { emailVerified: true })
       },
       create: {
         googleId: payload.sub,
         displayName: payload.name ?? 'AccountabiliBuddy User',
         email: payload.email,
         photoUrl: payload.picture ?? null,
-        emailVerified: false
+        emailVerified: googleEmailVerified
       }
     });
 

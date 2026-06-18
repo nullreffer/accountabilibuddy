@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { createGroup, createInvite, createSchedule } from '../lib/api';
+import { formatTime12h } from '../lib/format';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'custom';
 type StepKey = 'template' | 'group' | 'schedule' | 'invite';
@@ -100,20 +101,21 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const NTH_LABELS = ['First', 'Second', 'Third', 'Fourth', 'Last'] as const;
 
 const formatScheduleLabel = (schedule: ScheduleDraft) => {
-  if (schedule.frequency === 'daily') return `${schedule.name} · Daily at ${schedule.time}`;
+  const t = formatTime12h(schedule.time);
+  if (schedule.frequency === 'daily') return `${schedule.name} · Daily at ${t}`;
   if (schedule.frequency === 'monthly') {
     const day = schedule.daysOfWeek[0] ?? 1;
     if (day >= 100) {
       const offset = day - 100;
       const nth = Math.min(Math.floor(offset / 10), 4);
       const weekday = offset % 10;
-      return `${schedule.name} · ${NTH_LABELS[nth]} ${DAY_LABELS[weekday] ?? ''} of each month at ${schedule.time}`;
+      return `${schedule.name} · ${NTH_LABELS[nth]} ${DAY_LABELS[weekday] ?? ''} of each month at ${t}`;
     }
     const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
-    return `${schedule.name} · ${day}${suffix} of each month at ${schedule.time}`;
+    return `${schedule.name} · ${day}${suffix} of each month at ${t}`;
   }
   const days = schedule.daysOfWeek.map((day) => DAY_LABELS[day]).join(', ');
-  return `${schedule.name} · ${days} at ${schedule.time}`;
+  return `${schedule.name} · ${days} at ${t}`;
 };
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -156,6 +158,7 @@ const CreateGroupForm = ({
   const [openStep, setOpenStep] = useState<StepKey | null>('template');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [checkinType, setCheckinType] = useState<'standard' | 'timer'>('standard');
 
   const getStepRef = (step: StepKey) => {
     switch (step) {
@@ -301,6 +304,19 @@ const CreateGroupForm = ({
       return;
     }
 
+    // Auto-add a valid pending invite email before submitting
+    let finalInviteEmails = inviteEmails;
+    if (inviteEmail.trim()) {
+      const pendingEmail = inviteEmail.trim().toLowerCase();
+      if (!isValidEmail(pendingEmail)) {
+        window.alert('The invite email field contains an invalid address. Please fix or clear it before creating the group.');
+        return;
+      }
+      if (!finalInviteEmails.includes(pendingEmail)) {
+        finalInviteEmails = [...finalInviteEmails, pendingEmail];
+      }
+    }
+
     try {
       setLoading(true);
       const group = await createGroup({
@@ -308,7 +324,8 @@ const CreateGroupForm = ({
         description: description.trim(),
         photoProofRequired,
         jarEnabled,
-        jarAmount: jarEnabled ? Number(jarAmount) : 0
+        jarAmount: jarEnabled ? Number(jarAmount) : 0,
+        checkinType
       });
 
       if (schedules.length > 0) {
@@ -321,9 +338,9 @@ const CreateGroupForm = ({
         }
       }
 
-      if (inviteEmails.length > 0) {
+      if (finalInviteEmails.length > 0) {
         const inviteResults = await Promise.allSettled(
-          inviteEmails.map((email) => createInvite(group.id, email, true))
+          finalInviteEmails.map((email) => createInvite(group.id, email, true))
         );
         const failedInviteCount = inviteResults.filter((result) => result.status === 'rejected').length;
         if (failedInviteCount > 0) {
@@ -463,6 +480,17 @@ const CreateGroupForm = ({
                     <p>Members must attach a photo when checking in.</p>
                   </div>
                 </label>
+                <label className="switch-card field--full">
+                  <input
+                    checked={checkinType === 'timer'}
+                    onChange={(event) => setCheckinType(event.target.checked ? 'timer' : 'standard')}
+                    type="checkbox"
+                  />
+                  <div>
+                    <strong>Timer check-in</strong>
+                    <p>Members start and stop a timer instead of a single tap check-in.</p>
+                  </div>
+                </label>
               </div>
               <div className="step-card__actions">
                 <button className="button button--secondary" onClick={goToSchedules} type="button">
@@ -600,7 +628,7 @@ const CreateGroupForm = ({
                   </div>
                 ) : null}
 
-                {scheduleFrequency === 'weekly' ? (
+                {(scheduleFrequency === 'weekly' || scheduleFrequency === 'custom') ? (
                   <div className="field field--full">
                     <span className="field__label">Days <span className="helper-text" style={{ fontWeight: 'normal' }}>(select one or more)</span></span>
                     <div className="day-picker">

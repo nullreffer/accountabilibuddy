@@ -17,6 +17,7 @@ const mapCheckin = (c: {
   completedAt: Date;
   photoUrl: string | null;
   status: string;
+  durationSeconds: number | null;
   user: { displayName: string; photoUrl: string | null };
 }) => ({
   id: c.id,
@@ -28,6 +29,7 @@ const mapCheckin = (c: {
     ? `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/files/${c.photoUrl}`
     : null,
   status: c.status,
+  durationSeconds: c.durationSeconds ?? null,
   userDisplayName: c.user.displayName,
   userPhotoURL: c.user.photoUrl ?? ''
 });
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     // Handle multipart (photo upload) or JSON
     let scheduleId: string;
     let photoRelPath: string | null = null;
+    let durationSeconds: number | null = null;
 
     const contentType = req.headers.get('content-type') ?? '';
 
@@ -111,8 +114,9 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         photoRelPath = filename;
       }
     } else {
-      const body = (await req.json()) as { scheduleId?: string };
+      const body = (await req.json()) as { scheduleId?: string; durationSeconds?: number };
       scheduleId = body.scheduleId ?? 'manual';
+      durationSeconds = typeof body.durationSeconds === 'number' ? body.durationSeconds : null;
 
       if (group.photoProofRequired) {
         return badRequest('Photo proof required – use multipart/form-data');
@@ -135,7 +139,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       update: {
         completedAt: new Date(),
         photoUrl: photoRelPath,
-        status: 'completed'
+        status: 'completed',
+        durationSeconds
       },
       create: {
         id: checkinId,
@@ -145,7 +150,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         date: today,
         completedAt: new Date(),
         photoUrl: photoRelPath,
-        status: 'completed'
+        status: 'completed',
+        durationSeconds
       },
       include: { user: true }
     });

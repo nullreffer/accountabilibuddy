@@ -87,14 +87,15 @@ model Schedule {
 }
 
 model Checkin {
-  id          String   @id
-  userId      String
-  groupId     String
-  scheduleId  String
-  date        String
-  completedAt DateTime
-  photoUrl    String?
-  status      String
+  id              String   @id
+  userId          String
+  groupId         String
+  scheduleId      String
+  date            String
+  completedAt     DateTime
+  photoUrl        String?
+  status          String
+  durationSeconds Int?
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)

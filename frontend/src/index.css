@@ -1574,6 +1574,24 @@ a {
   line-height: 1;
 }
 
+.checkin-done-pill--timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.feed-item__status--timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* ---- Member check-in status row ---- */
 
 .member-status-row {
@@ -1718,10 +1736,53 @@ a {
   position: relative;
 }
 
+/* ---- Chat bubble wrap (bubble + reaction trigger side-by-side) ---- */
+.chat-bubble-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.chat-bubble-row--own .chat-bubble-wrap {
+  flex-direction: row-reverse;
+}
+
+/* ---- Reaction trigger button ---- */
+.reaction-trigger-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.reaction-trigger-btn {
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.reaction-trigger-btn:hover,
+.reaction-trigger-btn:focus-visible {
+  opacity: 1;
+  background: rgba(79, 70, 229, 0.08);
+}
+
+/* ---- System message body (text + reaction trigger inline) ---- */
+.chat-system__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
 .reaction-picker {
   position: absolute;
   bottom: calc(100% + 0.4rem);
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: 0.25rem;
   padding: 0.4rem 0.6rem;
@@ -1733,9 +1794,16 @@ a {
   white-space: nowrap;
 }
 
-.chat-bubble-row--own .reaction-picker {
+.reaction-picker--own {
   left: auto;
   right: 0;
+  transform: none;
+}
+
+.reaction-picker--system {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
 }
 
 .reaction-btn {

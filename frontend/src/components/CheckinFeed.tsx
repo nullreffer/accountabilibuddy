@@ -1,5 +1,6 @@
 import { useCheckins } from '../hooks/useCheckins';
 import { getAvatarFallback } from '../lib/avatar';
+import { formatDuration } from '../lib/format';
 import LoadingSpinner from './LoadingSpinner';
 
 const CheckinFeed = ({ groupId }: { groupId: string }) => {
@@ -29,7 +30,13 @@ const CheckinFeed = ({ groupId }: { groupId: string }) => {
                 <p>{new Date(checkin.completedAt).toLocaleString()}</p>
               </div>
               {checkin.status === 'completed' ? (
-                <span className="badge badge--success feed-item__status" title="Completed">✅</span>
+                checkin.durationSeconds != null ? (
+                  <span className="badge badge--success feed-item__status feed-item__status--timer" title="Completed">
+                    ✅ {formatDuration(checkin.durationSeconds)}
+                  </span>
+                ) : (
+                  <span className="badge badge--success feed-item__status" title="Completed">✅</span>
+                )
               ) : (
                 <span className="badge badge--warning feed-item__status" title="Missed">⏳</span>
               )}

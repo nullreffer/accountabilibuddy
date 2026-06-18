@@ -151,7 +151,7 @@ const LoginPage = () => {
                       setGoogleError('Sign-in failed. Please try again.');
                     });
                 } else {
-                  setGoogleError('Google sign-in did not return a credential.');
+                  setGoogleError('Google sign-in was incomplete. Please try again.');
                 }
               }}
               onError={() => { setGoogleError('Google sign-in failed. Please try again.'); }}

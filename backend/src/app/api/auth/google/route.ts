@@ -1,4 +1,5 @@
 import { OAuth2Client } from 'google-auth-library';
+import { Prisma } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { signToken } from '@/lib/auth';
 import { sendVerificationEmail } from '@/lib/email';
@@ -9,8 +10,19 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
 
 const oauthClient = new OAuth2Client(CLIENT_ID);
 
+class GoogleAuthConflictError extends Error {
+  constructor(public readonly code: 'GOOGLE_EMAIL_IN_USE' | 'GOOGLE_ID_CONFLICT') {
+    super(code);
+    this.name = 'GoogleAuthConflictError';
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
+    if (!CLIENT_ID) {
+      return badRequest('Google Sign In is not configured (GOOGLE_CLIENT_ID missing)');
+    }
+
     const { idToken } = (await req.json()) as { idToken?: string };
 
     if (!idToken) {
@@ -24,25 +36,63 @@ export async function POST(req: NextRequest) {
       return badRequest('Invalid Google token');
     }
 
+    const googleSub = payload.sub;
+    const googleEmail = payload.email;
+
     // Google verifies email addresses — trust the email_verified claim from the ID token
     const googleEmailVerified = payload.email_verified !== false;
 
-    const user = await prisma.user.upsert({
-      where: { googleId: payload.sub },
-      update: {
-        displayName: payload.name ?? 'AccountabiliBuddy User',
-        email: payload.email,
-        photoUrl: payload.picture ?? null,
-        emailVerified: googleEmailVerified
-      },
-      create: {
-        googleId: payload.sub,
-        displayName: payload.name ?? 'AccountabiliBuddy User',
-        email: payload.email,
-        photoUrl: payload.picture ?? null,
-        emailVerified: googleEmailVerified
+    const user = await prisma.$transaction(async (tx) => {
+      const existingByGoogle = await tx.user.findUnique({ where: { googleId: googleSub } });
+
+      if (existingByGoogle) {
+        if (existingByGoogle.email !== googleEmail) {
+          const emailOwner = await tx.user.findUnique({ where: { email: googleEmail } });
+          if (emailOwner && emailOwner.id !== existingByGoogle.id) {
+            throw new GoogleAuthConflictError('GOOGLE_EMAIL_IN_USE');
+          }
+        }
+
+        return tx.user.update({
+          where: { id: existingByGoogle.id },
+          data: {
+            displayName: payload.name ?? existingByGoogle.displayName,
+            email: googleEmail,
+            photoUrl: payload.picture ?? existingByGoogle.photoUrl,
+            emailVerified: googleEmailVerified
+          }
+        });
       }
-    });
+
+      const existingByEmail = await tx.user.findUnique({ where: { email: googleEmail } });
+
+      if (existingByEmail?.googleId && existingByEmail.googleId !== googleSub) {
+        throw new GoogleAuthConflictError('GOOGLE_ID_CONFLICT');
+      }
+
+      if (existingByEmail) {
+        return tx.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            googleId: googleSub,
+            displayName: payload.name ?? existingByEmail.displayName,
+            email: googleEmail,
+            photoUrl: payload.picture ?? existingByEmail.photoUrl,
+            emailVerified: googleEmailVerified
+          }
+        });
+      }
+
+      return tx.user.create({
+        data: {
+          googleId: googleSub,
+          displayName: payload.name ?? 'AccountabiliBuddy User',
+          email: googleEmail,
+          photoUrl: payload.picture ?? null,
+          emailVerified: googleEmailVerified
+        }
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     // For unverified users, regenerate code and send email
     if (!user.emailVerified) {
@@ -71,6 +121,17 @@ export async function POST(req: NextRequest) {
       }
     });
   } catch (err) {
+    if (err instanceof GoogleAuthConflictError) {
+      if (err.code === 'GOOGLE_EMAIL_IN_USE') {
+        return badRequest('This Google email is already used by another account. Please sign in with your existing method.');
+      }
+      if (err.code === 'GOOGLE_ID_CONFLICT') {
+        return badRequest('This email is already linked to another Google account. Please sign in with that Google account.');
+      }
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return badRequest('Account already exists with conflicting sign-in credentials');
+    }
     return handleError(err);
   }
 }

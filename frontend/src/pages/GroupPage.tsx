@@ -16,6 +16,7 @@ import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
 import { createCheckin, updateGroup, deleteGroup, scheduleIcsUrl } from '../lib/api';
 import { getAvatarFallback } from '../lib/avatar';
+import { formatDuration } from '../lib/format';
 
 const tabs = ['chat', 'jar'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -24,14 +25,6 @@ const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver
 const todayKey = () => new Date().toISOString().split('T')[0];
 
 const timerKey = (gid: string) => `ab_timer_start_${gid}`;
-
-const formatDuration = (seconds: number) => {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
 
 const TIMING_OPTIONS = [
   { value: '5min', label: '5 min before' },

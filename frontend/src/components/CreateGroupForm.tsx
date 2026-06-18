@@ -2,15 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { createGroup, createInvite, createSchedule } from '../lib/api';
-
-const formatTime12h = (time: string): string => {
-  const [hourStr, minuteStr] = time.split(':');
-  const hour = parseInt(hourStr, 10);
-  const minute = minuteStr ?? '00';
-  const period = hour < 12 ? 'AM' : 'PM';
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${hour12}:${minute} ${period}`;
-};
+import { formatTime12h } from '../lib/format';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'custom';
 type StepKey = 'template' | 'group' | 'schedule' | 'invite';

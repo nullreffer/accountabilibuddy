@@ -1,14 +1,7 @@
 import { useCheckins } from '../hooks/useCheckins';
 import { getAvatarFallback } from '../lib/avatar';
+import { formatDuration } from '../lib/format';
 import LoadingSpinner from './LoadingSpinner';
-
-const formatDuration = (seconds: number) => {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
 
 const CheckinFeed = ({ groupId }: { groupId: string }) => {
   const { checkins, loading } = useCheckins(groupId, 20);

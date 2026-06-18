@@ -19,6 +19,7 @@ const LoginPage = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [googleError, setGoogleError] = useState('');
 
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true });
@@ -130,16 +131,20 @@ const LoginPage = () => {
         </div>
 
         {tab === 'google' ? (
-          <GoogleLogin
-            onSuccess={(credentialResponse) => {
-              if (credentialResponse.credential) {
-                void signIn(credentialResponse.credential).then(() => {
-                  navigate('/dashboard', { replace: true });
-                });
-              }
-            }}
-            onError={() => { window.alert('Google sign-in failed. Please try again.'); }}
-          />
+          <div className="google-auth">
+            <GoogleLogin
+              onSuccess={(credentialResponse) => {
+                if (credentialResponse.credential) {
+                  setGoogleError('');
+                  signIn(credentialResponse.credential)
+                    .then(() => { navigate('/dashboard', { replace: true }); })
+                    .catch((err) => { console.error('Google sign-in error:', err); setGoogleError('Sign-in failed. Please try again.'); });
+                }
+              }}
+              onError={() => { setGoogleError('Google sign-in failed. Please try again.'); }}
+            />
+            {googleError ? <p className="error-text">{googleError}</p> : null}
+          </div>
         ) : tab === 'apple' ? (
           <div className="apple-auth">
             <button

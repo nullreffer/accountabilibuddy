@@ -188,6 +188,8 @@ const InviteManager = ({ groupId, isOwner }: { groupId: string; isOwner: boolean
       </div>
 
       <div className="card">
+        <div className="card__header">
+          <div>
             <h3>Outstanding links</h3>
           </div>
         </div>

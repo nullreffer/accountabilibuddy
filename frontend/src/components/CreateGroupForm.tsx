@@ -600,7 +600,7 @@ const CreateGroupForm = ({
                   </div>
                 ) : null}
 
-                {scheduleFrequency === 'weekly' || scheduleFrequency === 'custom' ? (
+                {scheduleFrequency === 'weekly' ? (
                   <div className="field field--full">
                     <span className="field__label">Days <span className="helper-text" style={{ fontWeight: 'normal' }}>(select one or more)</span></span>
                     <div className="day-picker">

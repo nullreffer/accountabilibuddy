@@ -130,7 +130,7 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
                         {REACTION_EMOJIS.map((emoji) => (
                           <button
                             aria-label={`React with ${emoji}`}
-                            className={`reaction-btn${(msgReactions[emoji] ?? []).includes(user?.id ?? '') ? ' reaction-btn--active' : ''}`}
+                            className={`reaction-btn${user && (msgReactions[emoji] ?? []).includes(user.id) ? ' reaction-btn--active' : ''}`}
                             key={emoji}
                             onClick={() => toggleReaction(msg.id, emoji)}
                             type="button"
@@ -146,7 +146,7 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
                       {reactionEntries.map(([emoji, users]) => (
                         <button
                           aria-label={`${emoji} ${users.length}`}
-                          className={`reaction-chip${users.includes(user?.id ?? '') ? ' reaction-chip--own' : ''}`}
+                          className={`reaction-chip${user && users.includes(user.id) ? ' reaction-chip--own' : ''}`}
                           key={emoji}
                           onClick={() => toggleReaction(msg.id, emoji as ReactionEmoji)}
                           type="button"

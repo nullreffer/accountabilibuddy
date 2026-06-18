@@ -637,7 +637,7 @@ const GroupPage = () => {
                     </label>
                     <label className="field">
                       <span>Frequency</span>
-                      <select className="input" onChange={(e) => { setFrequency(e.target.value as 'daily' | 'weekly' | 'monthly'); setDaysOfWeek([]); }} value={frequency}>
+                      <select className="input" onChange={(e) => { setFrequency(e.target.value as 'daily' | 'weekly' | 'monthly'); setDaysOfWeek([]); setMonthlyMode('dayOfMonth'); setMonthlyDayOfMonth(1); setMonthlyNth(1); setMonthlyWeekday(1); }} value={frequency}>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>

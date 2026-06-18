@@ -74,16 +74,43 @@ const TEMPLATES: Template[] = [
     name: 'Book Club',
     description: 'Reading an hour every day — build a daily reading habit, one page at a time.',
     schedules: [{ name: 'Daily Reading', frequency: 'daily', daysOfWeek: [], time: '21:00' }]
+  },
+  {
+    emoji: '🥾',
+    name: 'Hiking Crew',
+    description: 'Hitting the trails together — explore new routes and stay active outdoors.',
+    schedules: [{ name: 'Weekly Hike', frequency: 'weekly', daysOfWeek: [6], time: '07:30' }]
+  },
+  {
+    emoji: '📺',
+    name: 'TV Gang',
+    description: 'Watching episodes together every week — no spoilers until everyone\'s caught up.',
+    schedules: [{ name: 'Watch Night', frequency: 'weekly', daysOfWeek: [5], time: '20:00' }]
+  },
+  {
+    emoji: '🌅',
+    name: 'Morning Routine',
+    description: 'Starting every day with intention — build a consistent morning ritual together.',
+    schedules: [{ name: 'Morning Check-In', frequency: 'daily', daysOfWeek: [], time: '07:00' }]
   }
 ];
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const NTH_LABELS = ['First', 'Second', 'Third', 'Fourth', 'Last'] as const;
+
 const formatScheduleLabel = (schedule: ScheduleDraft) => {
   if (schedule.frequency === 'daily') return `${schedule.name} · Daily at ${schedule.time}`;
   if (schedule.frequency === 'monthly') {
     const day = schedule.daysOfWeek[0] ?? 1;
-    return `${schedule.name} · Monthly on day ${day} at ${schedule.time}`;
+    if (day >= 100) {
+      const offset = day - 100;
+      const nth = Math.min(Math.floor(offset / 10), 4);
+      const weekday = offset % 10;
+      return `${schedule.name} · ${NTH_LABELS[nth]} ${DAY_LABELS[weekday] ?? ''} of each month at ${schedule.time}`;
+    }
+    const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
+    return `${schedule.name} · ${day}${suffix} of each month at ${schedule.time}`;
   }
   const days = schedule.daysOfWeek.map((day) => DAY_LABELS[day]).join(', ');
   return `${schedule.name} · ${days} at ${schedule.time}`;
@@ -122,6 +149,9 @@ const CreateGroupForm = ({
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [scheduleTime, setScheduleTime] = useState('08:00');
   const [scheduleDayOfMonth, setScheduleDayOfMonth] = useState(1);
+  const [monthlyMode, setMonthlyMode] = useState<'dayOfMonth' | 'nthWeekday'>('dayOfMonth');
+  const [monthlyNth, setMonthlyNth] = useState(1);
+  const [monthlyWeekday, setMonthlyWeekday] = useState(1);
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [openStep, setOpenStep] = useState<StepKey | null>('template');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -181,17 +211,25 @@ const CreateGroupForm = ({
       return;
     }
 
+    let daysOfWeek: number[];
+    if (scheduleFrequency === 'daily') {
+      daysOfWeek = [];
+    } else if (scheduleFrequency === 'monthly') {
+      if (monthlyMode === 'nthWeekday') {
+        daysOfWeek = [100 + (monthlyNth - 1) * 10 + monthlyWeekday];
+      } else {
+        daysOfWeek = [scheduleDayOfMonth];
+      }
+    } else {
+      daysOfWeek = scheduleDays;
+    }
+
     setSchedules((previous) => [
       ...previous,
       {
         name: scheduleName.trim(),
         frequency: scheduleFrequency,
-        daysOfWeek:
-          scheduleFrequency === 'daily'
-            ? []
-            : scheduleFrequency === 'monthly'
-              ? [scheduleDayOfMonth]
-              : scheduleDays,
+        daysOfWeek,
         time: scheduleTime
       }
     ]);
@@ -200,6 +238,9 @@ const CreateGroupForm = ({
     setScheduleTime('08:00');
     setScheduleFrequency('weekly');
     setScheduleDayOfMonth(1);
+    setMonthlyMode('dayOfMonth');
+    setMonthlyNth(1);
+    setMonthlyWeekday(1);
   };
 
   const removeSchedule = (index: number) => {
@@ -507,21 +548,59 @@ const CreateGroupForm = ({
                 </div>
 
                 {scheduleFrequency === 'monthly' ? (
-                  <label className="field field--full">
-                    <span>Day of month</span>
-                    <input
-                      className="input"
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={scheduleDayOfMonth}
-                      onChange={(event) => setScheduleDayOfMonth(Number(event.target.value))}
-                    />
-                    <span className="helper-text">Days 29–31 will be skipped in shorter months.</span>
-                  </label>
+                  <div className="field field--full stack-md">
+                    <div className="form-row">
+                      <label className="field">
+                        <span>Monthly type</span>
+                        <select
+                          className="input"
+                          value={monthlyMode}
+                          onChange={(event) => setMonthlyMode(event.target.value as 'dayOfMonth' | 'nthWeekday')}
+                        >
+                          <option value="dayOfMonth">Day of month (e.g. 1st)</option>
+                          <option value="nthWeekday">Weekday (e.g. First Thursday)</option>
+                        </select>
+                      </label>
+                    </div>
+                    {monthlyMode === 'dayOfMonth' ? (
+                      <label className="field">
+                        <span>Day of month</span>
+                        <input
+                          className="input"
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={scheduleDayOfMonth}
+                          onChange={(event) => setScheduleDayOfMonth(Number(event.target.value))}
+                        />
+                        <span className="helper-text">Days 29–31 will be skipped in shorter months.</span>
+                      </label>
+                    ) : (
+                      <div className="form-row">
+                        <label className="field">
+                          <span>Which</span>
+                          <select className="input" value={monthlyNth} onChange={(e) => setMonthlyNth(Number(e.target.value))}>
+                            <option value={1}>First</option>
+                            <option value={2}>Second</option>
+                            <option value={3}>Third</option>
+                            <option value={4}>Fourth</option>
+                            <option value={5}>Last</option>
+                          </select>
+                        </label>
+                        <label className="field">
+                          <span>Weekday</span>
+                          <select className="input" value={monthlyWeekday} onChange={(e) => setMonthlyWeekday(Number(e.target.value))}>
+                            {DAY_LABELS.map((label, index) => (
+                              <option key={label} value={index}>{label}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 ) : null}
 
-                {scheduleFrequency === 'weekly' || scheduleFrequency === 'custom' ? (
+                {scheduleFrequency === 'weekly' ? (
                   <div className="field field--full">
                     <span className="field__label">Days <span className="helper-text" style={{ fontWeight: 'normal' }}>(select one or more)</span></span>
                     <div className="day-picker">

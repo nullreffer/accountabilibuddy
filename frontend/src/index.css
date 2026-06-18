@@ -1647,4 +1647,196 @@ a {
   padding-left: 0.25rem;
 }
 
+/* ---- Notification active list ---- */
 
+.notif-active-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.notif-active-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.notif-active-item__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.notif-active-item__label {
+  flex: 1;
+  font-weight: 600;
+}
+
+.notif-remove-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.notif-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.notif-add-section {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.notif-add-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.notif-add-btn {
+  white-space: nowrap;
+  align-self: flex-end;
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .notif-add-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Reaction system ---- */
+
+.chat-bubble {
+  position: relative;
+}
+
+.reaction-picker {
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 0;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  z-index: 50;
+  white-space: nowrap;
+}
+
+.chat-bubble-row--own .reaction-picker {
+  left: auto;
+  right: 0;
+}
+
+.reaction-btn {
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.25rem;
+  border-radius: 999px;
+  transition: transform 0.1s ease, background 0.1s ease;
+  background: none;
+}
+
+.reaction-btn:hover {
+  transform: scale(1.25);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.reaction-btn--active {
+  background: rgba(79, 70, 229, 0.12);
+}
+
+.reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0 0.5rem;
+}
+
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1.5px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  transition: border-color 0.1s ease, background 0.1s ease;
+}
+
+.reaction-chip:hover {
+  border-color: var(--primary);
+  background: rgba(79, 70, 229, 0.06);
+}
+
+.reaction-chip--own {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+[data-theme='dark'] .reaction-chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+[data-theme='dark'] .reaction-picker {
+  background: var(--surface);
+}
+
+/* ---- Member card — prevent star badge word-wrap and notification icon ---- */
+
+.member-badge--star {
+  white-space: nowrap;
+}
+
+.notif-toggle-btn {
+  font-size: 1.15rem;
+  background: none;
+}
+
+.notif-toggle-btn--on {
+  color: var(--warning);
+}
+
+.notif-toggle-btn--off {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* ---- Feed item — always keep avatar in same row as content ---- */
+
+.feed-item__info h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.feed-item__info p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.feed-item__status {
+  font-size: 1.1rem;
+  padding: 0.25rem 0.5rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .feed-item {
+    grid-template-columns: auto 1fr;
+  }
+}

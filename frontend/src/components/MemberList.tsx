@@ -124,19 +124,28 @@ const MemberList = ({ groupId, currentUserRole }: { groupId: string; currentUser
               </div>
             </div>
             <div className="member-card__meta">
-              <span className="badge badge--warning">⭐ {member.starCount}</span>
+              <span className="badge badge--warning member-badge--star">⭐&nbsp;{member.starCount}</span>
               <span className="badge badge--neutral">{member.role}</span>
-              <label className="toggle-inline">
-                <input
-                  checked={member.notificationsEnabled}
-                  disabled={!isSelf || busyAction === `notifications-${member.uid}`}
-                  onChange={(event) =>
-                    void handleNotificationToggle(member.uid, event.currentTarget.checked)
-                  }
-                  type="checkbox"
-                />
-                Notifications
-              </label>
+              {isSelf ? (
+                <button
+                  aria-label={member.notificationsEnabled ? 'Notifications on – tap to disable' : 'Notifications off – tap to enable'}
+                  className={`icon-btn notif-toggle-btn${member.notificationsEnabled ? ' notif-toggle-btn--on' : ' notif-toggle-btn--off'}`}
+                  disabled={busyAction === `notifications-${member.uid}`}
+                  onClick={() => void handleNotificationToggle(member.uid, !member.notificationsEnabled)}
+                  title={member.notificationsEnabled ? 'Notifications on' : 'Notifications off'}
+                  type="button"
+                >
+                  {member.notificationsEnabled ? '🔔' : '🔕'}
+                </button>
+              ) : (
+                <span
+                  className="icon-btn"
+                  aria-label={member.notificationsEnabled ? 'Notifications on' : 'Notifications off'}
+                  title={member.notificationsEnabled ? 'Notifications on' : 'Notifications off'}
+                >
+                  {member.notificationsEnabled ? '🔔' : '🔕'}
+                </span>
+              )}
             </div>
             {showActions ? (
               <div className="member-card__actions">

@@ -1,4 +1,5 @@
 import { OAuth2Client } from 'google-auth-library';
+import { Prisma } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { signToken } from '@/lib/auth';
 import { sendVerificationEmail } from '@/lib/email';
@@ -28,58 +29,63 @@ export async function POST(req: NextRequest) {
       return badRequest('Invalid Google token');
     }
 
+    const googleSub = payload.sub;
+    const googleEmail = payload.email;
+
     // Google verifies email addresses — trust the email_verified claim from the ID token
     const googleEmailVerified = payload.email_verified !== false;
 
-    let user = await prisma.user.findUnique({ where: { googleId: payload.sub } });
+    const user = await prisma.$transaction(async (tx) => {
+      const existingByGoogle = await tx.user.findUnique({ where: { googleId: googleSub } });
 
-    if (user) {
-      if (user.email !== payload.email) {
-        const emailOwner = await prisma.user.findUnique({ where: { email: payload.email } });
-        if (emailOwner && emailOwner.id !== user.id) {
-          return badRequest('This Google email is already used by another account');
-        }
-      }
-
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          displayName: payload.name ?? 'AccountabiliBuddy User',
-          email: payload.email,
-          photoUrl: payload.picture ?? null,
-          emailVerified: googleEmailVerified
-        }
-      });
-    } else {
-      const existing = await prisma.user.findUnique({ where: { email: payload.email } });
-
-      if (existing?.googleId && existing.googleId !== payload.sub) {
-        return badRequest('This email is already linked to another Google account');
-      }
-
-      if (existing) {
-        user = await prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            googleId: payload.sub,
-            displayName: payload.name ?? existing.displayName,
-            email: payload.email,
-            photoUrl: payload.picture ?? existing.photoUrl,
-            emailVerified: googleEmailVerified
+      if (existingByGoogle) {
+        if (existingByGoogle.email !== googleEmail) {
+          const emailOwner = await tx.user.findUnique({ where: { email: googleEmail } });
+          if (emailOwner && emailOwner.id !== existingByGoogle.id) {
+            throw new Error('GOOGLE_EMAIL_IN_USE');
           }
-        });
-      } else {
-        user = await prisma.user.create({
+        }
+
+        return tx.user.update({
+          where: { id: existingByGoogle.id },
           data: {
-            googleId: payload.sub,
             displayName: payload.name ?? 'AccountabiliBuddy User',
-            email: payload.email,
+            email: googleEmail,
             photoUrl: payload.picture ?? null,
             emailVerified: googleEmailVerified
           }
         });
       }
-    }
+
+      const existingByEmail = await tx.user.findUnique({ where: { email: googleEmail } });
+
+      if (existingByEmail?.googleId && existingByEmail.googleId !== googleSub) {
+        throw new Error('GOOGLE_ID_CONFLICT');
+      }
+
+      if (existingByEmail) {
+        return tx.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            googleId: googleSub,
+            displayName: payload.name ?? existingByEmail.displayName,
+            email: googleEmail,
+            photoUrl: payload.picture ?? existingByEmail.photoUrl,
+            emailVerified: googleEmailVerified
+          }
+        });
+      }
+
+      return tx.user.create({
+        data: {
+          googleId: googleSub,
+          displayName: payload.name ?? 'AccountabiliBuddy User',
+          email: googleEmail,
+          photoUrl: payload.picture ?? null,
+          emailVerified: googleEmailVerified
+        }
+      });
+    });
 
     // For unverified users, regenerate code and send email
     if (!user.emailVerified) {
@@ -108,6 +114,17 @@ export async function POST(req: NextRequest) {
       }
     });
   } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === 'GOOGLE_EMAIL_IN_USE') {
+        return badRequest('This Google email is already used by another account');
+      }
+      if (err.message === 'GOOGLE_ID_CONFLICT') {
+        return badRequest('This email is already linked to another Google account');
+      }
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return badRequest('Account already exists with conflicting sign-in credentials');
+    }
     return handleError(err);
   }
 }

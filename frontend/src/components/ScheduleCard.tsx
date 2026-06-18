@@ -1,6 +1,17 @@
 import type { Schedule } from '../types';
 
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const nthLabels = ['First', 'Second', 'Third', 'Fourth', 'Last'];
+
+const decodeMonthlyDay = (encoded: number): string => {
+  if (encoded >= 100) {
+    const offset = encoded - 100;
+    const nth = Math.min(Math.floor(offset / 10), 4);
+    const weekday = offset % 10;
+    return `${nthLabels[nth]} ${dayLabels[weekday] ?? ''} of each month`;
+  }
+  return `Day ${encoded} of each month`;
+};
 
 const ScheduleCard = ({
   schedule,
@@ -13,7 +24,7 @@ const ScheduleCard = ({
 }) => {
   const dayText =
     schedule.frequency === 'monthly'
-      ? `Day ${schedule.daysOfWeek[0] ?? 1} of each month`
+      ? decodeMonthlyDay(schedule.daysOfWeek[0] ?? 1)
       : schedule.daysOfWeek.length
         ? schedule.daysOfWeek.map((day) => dayLabels[day]).join(', ')
         : 'Every day';

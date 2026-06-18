@@ -18,19 +18,21 @@ const CheckinFeed = ({ groupId }: { groupId: string }) => {
       {checkins.map((checkin) => (
         <article className="feed-item" key={checkin.id}>
           <img
-            className="avatar"
+            className="avatar feed-item__avatar"
             src={checkin.userPhotoURL || getAvatarFallback(checkin.userDisplayName || 'AB')}
             alt={checkin.userDisplayName}
           />
           <div className="feed-item__content">
             <div className="feed-item__header">
-              <div>
+              <div className="feed-item__info">
                 <h3>{checkin.userDisplayName}</h3>
                 <p>{new Date(checkin.completedAt).toLocaleString()}</p>
               </div>
-              <span className={`badge ${checkin.status === 'completed' ? 'badge--success' : 'badge--warning'}`}>
-                {checkin.status === 'completed' ? '✅ Completed' : '⚠️ Missed'}
-              </span>
+              {checkin.status === 'completed' ? (
+                <span className="badge badge--success feed-item__status" title="Completed">✅</span>
+              ) : (
+                <span className="badge badge--warning feed-item__status" title="Missed">⏳</span>
+              )}
             </div>
             {checkin.photoURL ? (
               <img className="feed-item__photo" src={checkin.photoURL} alt="Check-in proof" />

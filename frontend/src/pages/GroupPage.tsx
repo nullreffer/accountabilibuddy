@@ -73,7 +73,7 @@ const GroupPage = () => {
   const { schedules, loading: schedulesLoading } = useSchedules(groupId);
   const { checkins, loading: checkinsLoading } = useCheckins(groupId, 50);
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('chat');
-  const [activeModal, setActiveModal] = useState<'members' | 'settings' | 'notifications' | 'chart' | 'schedules' | null>(null);
+  const [activeModal, setActiveModal] = useState<'members' | 'invite' | 'settings' | 'notifications' | 'chart' | 'schedules' | null>(null);
   const [groupMenuOpen, setGroupMenuOpen] = useState(false);
   const groupMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -90,8 +90,12 @@ const GroupPage = () => {
   // Schedule form state
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'custom'>('daily');
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
+  const [monthlyMode, setMonthlyMode] = useState<'dayOfMonth' | 'nthWeekday'>('dayOfMonth');
+  const [monthlyDayOfMonth, setMonthlyDayOfMonth] = useState(1);
+  const [monthlyNth, setMonthlyNth] = useState(1);
+  const [monthlyWeekday, setMonthlyWeekday] = useState(1);
   const [time, setTime] = useState('09:00');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
 
@@ -106,6 +110,8 @@ const GroupPage = () => {
 
   // Notification prefs state
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(defaultNotifPrefs);
+  const [addNotifChannel, setAddNotifChannel] = useState<'email' | 'push'>('push');
+  const [addNotifTiming, setAddNotifTiming] = useState<string>('1hr');
 
   const canManage = member?.role === 'owner' || member?.role === 'coowner';
   const isOwner = member?.role === 'owner';
@@ -229,16 +235,27 @@ const GroupPage = () => {
       return;
     }
 
-    if (frequency !== 'daily' && !daysOfWeek.length) {
-      window.alert('Pick at least one day for weekly or custom schedules.');
+    if (frequency === 'weekly' && !daysOfWeek.length) {
+      window.alert('Pick at least one day for weekly schedules.');
       return;
+    }
+
+    let resolvedDays: number[];
+    if (frequency === 'daily') {
+      resolvedDays = [];
+    } else if (frequency === 'monthly') {
+      resolvedDays = monthlyMode === 'nthWeekday'
+        ? [100 + (monthlyNth - 1) * 10 + monthlyWeekday]
+        : [monthlyDayOfMonth];
+    } else {
+      resolvedDays = daysOfWeek;
     }
 
     try {
       await createSchedule(groupId, {
         name: scheduleName.trim(),
         frequency,
-        daysOfWeek: frequency === 'daily' ? [] : daysOfWeek,
+        daysOfWeek: resolvedDays,
         time,
         timezone
       });
@@ -246,6 +263,10 @@ const GroupPage = () => {
       setScheduleName('');
       setFrequency('daily');
       setDaysOfWeek([]);
+      setMonthlyMode('dayOfMonth');
+      setMonthlyDayOfMonth(1);
+      setMonthlyNth(1);
+      setMonthlyWeekday(1);
       setTime('09:00');
       setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
     } catch (error) {
@@ -403,6 +424,11 @@ const GroupPage = () => {
               <button className="menu-dropdown__link" onClick={() => { setActiveModal('members'); setGroupMenuOpen(false); }} type="button">
                 👥 Members
               </button>
+              {canManage ? (
+                <button className="menu-dropdown__link" onClick={() => { setActiveModal('invite'); setGroupMenuOpen(false); }} type="button">
+                  ✉️ Invite
+                </button>
+              ) : null}
               <button className="menu-dropdown__link" onClick={() => { setActiveModal('notifications'); setGroupMenuOpen(false); }} type="button">
                 🔔 Notifications
               </button>
@@ -454,6 +480,7 @@ const GroupPage = () => {
               <div>
                 <p className="eyebrow">
                   {activeModal === 'members' ? 'Members'
+                    : activeModal === 'invite' ? 'Invite'
                     : activeModal === 'settings' ? 'Settings'
                     : activeModal === 'notifications' ? 'Notifications'
                     : activeModal === 'schedules' ? 'Schedules'
@@ -461,6 +488,7 @@ const GroupPage = () => {
                 </p>
                 <h2>
                   {activeModal === 'members' ? 'Manage members'
+                    : activeModal === 'invite' ? 'Invite members'
                     : activeModal === 'settings' ? 'Group settings'
                     : activeModal === 'notifications' ? 'My notifications'
                     : activeModal === 'schedules' ? 'Reminder schedules'
@@ -475,89 +503,118 @@ const GroupPage = () => {
             {activeModal === 'members' ? (
               <div className="stack-lg">
                 <MemberList currentUserRole={member.role} groupId={groupId} />
-                {canManage ? (
-                  <section className="stack-md">
-                    <div>
-                      <p className="eyebrow">Invite</p>
-                      <h3>Add members</h3>
-                    </div>
-                    <InviteManager groupId={groupId} isOwner={canManage} />
-                  </section>
-                ) : null}
+              </div>
+            ) : null}
+
+            {activeModal === 'invite' ? (
+              <div className="stack-lg">
+                <InviteManager groupId={groupId} isOwner={canManage} />
               </div>
             ) : null}
 
             {activeModal === 'notifications' ? (
               <div className="stack-lg">
                 <div className="stack-md">
-                  <label className="switch-card">
-                    <input
-                      checked={notifPrefs.email}
-                      onChange={(e) => handleSaveNotifPrefs({ ...notifPrefs, email: e.target.checked })}
-                      type="checkbox"
-                    />
-                    <div>
-                      <strong>Email notifications</strong>
-                      <p>Get an email reminder when a schedule is due.</p>
-                    </div>
-                  </label>
-                  {notifPrefs.email ? (
-                    <div className="notif-timing-grid">
-                      {TIMING_OPTIONS.map(({ value, label }) => {
-                        const checked = notifPrefs.emailTiming.includes(value);
+                  <p className="eyebrow">Current notifications</p>
+                  {!notifPrefs.email && !notifPrefs.push ? (
+                    <p className="helper-text">No notifications set up yet.</p>
+                  ) : (
+                    <div className="notif-active-list">
+                      {notifPrefs.email && notifPrefs.emailTiming.map((timing) => {
+                        const label = TIMING_OPTIONS.find((o) => o.value === timing)?.label ?? timing;
                         return (
-                          <label className="checkbox-pill" key={value}>
-                            <input
-                              checked={checked}
-                              onChange={() => {
-                                const next = checked
-                                  ? notifPrefs.emailTiming.filter((x) => x !== value)
-                                  : [...notifPrefs.emailTiming, value];
-                                handleSaveNotifPrefs({ ...notifPrefs, emailTiming: next });
+                          <div className="notif-active-item" key={`email-${timing}`}>
+                            <span className="notif-active-item__icon">📧</span>
+                            <span className="notif-active-item__label">Email · {label}</span>
+                            <button
+                              aria-label={`Remove email ${label}`}
+                              className="icon-btn notif-remove-btn"
+                              onClick={() => {
+                                const next = notifPrefs.emailTiming.filter((t) => t !== timing);
+                                handleSaveNotifPrefs({ ...notifPrefs, emailTiming: next, email: next.length > 0 });
                               }}
-                              type="checkbox"
-                            />
-                            <span>{label}</span>
-                          </label>
+                              type="button"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {notifPrefs.push && notifPrefs.pushTiming.map((timing) => {
+                        const label = TIMING_OPTIONS.find((o) => o.value === timing)?.label ?? timing;
+                        return (
+                          <div className="notif-active-item" key={`push-${timing}`}>
+                            <span className="notif-active-item__icon">📱</span>
+                            <span className="notif-active-item__label">App · {label}</span>
+                            <button
+                              aria-label={`Remove app ${label}`}
+                              className="icon-btn notif-remove-btn"
+                              onClick={() => {
+                                const next = notifPrefs.pushTiming.filter((t) => t !== timing);
+                                handleSaveNotifPrefs({ ...notifPrefs, pushTiming: next, push: next.length > 0 });
+                              }}
+                              type="button"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         );
                       })}
                     </div>
-                  ) : null}
+                  )}
                 </div>
-                <div className="stack-md">
-                  <label className="switch-card">
-                    <input
-                      checked={notifPrefs.push}
-                      onChange={(e) => handleSaveNotifPrefs({ ...notifPrefs, push: e.target.checked })}
-                      type="checkbox"
-                    />
-                    <div>
-                      <strong>App notifications</strong>
-                      <p>Receive push notifications on this device.</p>
-                    </div>
-                  </label>
-                  {notifPrefs.push ? (
-                    <div className="notif-timing-grid">
-                      {TIMING_OPTIONS.map(({ value, label }) => {
-                        const checked = notifPrefs.pushTiming.includes(value);
-                        return (
-                          <label className="checkbox-pill" key={value}>
-                            <input
-                              checked={checked}
-                              onChange={() => {
-                                const next = checked
-                                  ? notifPrefs.pushTiming.filter((x) => x !== value)
-                                  : [...notifPrefs.pushTiming, value];
-                                handleSaveNotifPrefs({ ...notifPrefs, pushTiming: next });
-                              }}
-                              type="checkbox"
-                            />
-                            <span>{label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                <div className="notif-add-section stack-md">
+                  <p className="eyebrow">Add notification</p>
+                  <div className="notif-add-row">
+                    <label className="field">
+                      <span>Channel</span>
+                      <select
+                        className="input"
+                        value={addNotifChannel}
+                        onChange={(e) => setAddNotifChannel(e.target.value as 'email' | 'push')}
+                      >
+                        <option value="push">📱 App notification</option>
+                        <option value="email">📧 Email</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>When</span>
+                      <select
+                        className="input"
+                        value={addNotifTiming}
+                        onChange={(e) => setAddNotifTiming(e.target.value)}
+                      >
+                        {TIMING_OPTIONS.map(({ value, label }) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      className="button button--secondary button--small notif-add-btn"
+                      onClick={() => {
+                        if (addNotifChannel === 'email') {
+                          if (!notifPrefs.emailTiming.includes(addNotifTiming)) {
+                            handleSaveNotifPrefs({
+                              ...notifPrefs,
+                              email: true,
+                              emailTiming: [...notifPrefs.emailTiming, addNotifTiming]
+                            });
+                          }
+                        } else {
+                          if (!notifPrefs.pushTiming.includes(addNotifTiming)) {
+                            handleSaveNotifPrefs({
+                              ...notifPrefs,
+                              push: true,
+                              pushTiming: [...notifPrefs.pushTiming, addNotifTiming]
+                            });
+                          }
+                        }
+                      }}
+                      type="button"
+                    >
+                      + Add
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -580,13 +637,13 @@ const GroupPage = () => {
                     </label>
                     <label className="field">
                       <span>Frequency</span>
-                      <select className="input" onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly' | 'custom')} value={frequency}>
+                      <select className="input" onChange={(e) => { setFrequency(e.target.value as 'daily' | 'weekly' | 'monthly'); setDaysOfWeek([]); }} value={frequency}>
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
-                        <option value="custom">Custom</option>
+                        <option value="monthly">Monthly</option>
                       </select>
                     </label>
-                    {(frequency === 'weekly' || frequency === 'custom') ? (
+                    {frequency === 'weekly' ? (
                       <div className="field field--full">
                         <span>Days of week</span>
                         <div className="checkbox-grid">
@@ -597,6 +654,56 @@ const GroupPage = () => {
                             </label>
                           ))}
                         </div>
+                      </div>
+                    ) : null}
+                    {frequency === 'monthly' ? (
+                      <div className="field field--full stack-md">
+                        <label className="field">
+                          <span>Monthly type</span>
+                          <select
+                            className="input"
+                            value={monthlyMode}
+                            onChange={(e) => setMonthlyMode(e.target.value as 'dayOfMonth' | 'nthWeekday')}
+                          >
+                            <option value="dayOfMonth">Day of month (e.g. 1st)</option>
+                            <option value="nthWeekday">Weekday (e.g. First Thursday)</option>
+                          </select>
+                        </label>
+                        {monthlyMode === 'dayOfMonth' ? (
+                          <label className="field">
+                            <span>Day of month</span>
+                            <input
+                              className="input"
+                              max="31"
+                              min="1"
+                              onChange={(e) => setMonthlyDayOfMonth(Number(e.target.value))}
+                              type="number"
+                              value={monthlyDayOfMonth}
+                            />
+                            <span className="helper-text">Days 29–31 will be skipped in shorter months.</span>
+                          </label>
+                        ) : (
+                          <div className="form-row">
+                            <label className="field">
+                              <span>Which</span>
+                              <select className="input" onChange={(e) => setMonthlyNth(Number(e.target.value))} value={monthlyNth}>
+                                <option value={1}>First</option>
+                                <option value={2}>Second</option>
+                                <option value={3}>Third</option>
+                                <option value={4}>Fourth</option>
+                                <option value={5}>Last</option>
+                              </select>
+                            </label>
+                            <label className="field">
+                              <span>Weekday</span>
+                              <select className="input" onChange={(e) => setMonthlyWeekday(Number(e.target.value))} value={monthlyWeekday}>
+                                {dayNames.map((label, index) => (
+                                  <option key={label} value={index}>{label}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        )}
                       </div>
                     ) : null}
                     <label className="field">

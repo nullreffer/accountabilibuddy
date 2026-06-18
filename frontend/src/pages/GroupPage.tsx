@@ -202,7 +202,7 @@ const GroupPage = () => {
 
     try {
       setCheckinLoading(true);
-      await createCheckin(groupId, scheduleId, photoFile);
+      await createCheckin(groupId, scheduleId, photoFile, durationSeconds ?? null);
       setPhotoFile(null);
       if (durationSeconds !== undefined) {
         localStorage.removeItem(timerKey(groupId));
@@ -352,6 +352,13 @@ const GroupPage = () => {
   const checkinSlot = (() => {
     if (!group || !user) return null;
     if (todaysCheckin) {
+      if (checkinType === 'timer' && todaysCheckin.durationSeconds != null) {
+        return (
+          <span className="checkin-done-pill checkin-done-pill--timer" title="Checked in today">
+            ✅ {formatDuration(todaysCheckin.durationSeconds)}
+          </span>
+        );
+      }
       return <span className="checkin-done-pill" title="Checked in today">✅</span>;
     }
     if (checkinType === 'timer') {

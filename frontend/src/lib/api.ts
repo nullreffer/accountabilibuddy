@@ -144,6 +144,7 @@ export const createGroup = (data: {
   photoProofRequired?: boolean;
   jarEnabled?: boolean;
   jarAmount?: number;
+  checkinType?: 'standard' | 'timer';
 }) => request<Group>('POST', '/api/groups', data);
 
 export const updateGroup = (
@@ -221,6 +222,7 @@ export interface Checkin {
   completedAt: string;
   photoURL: string | null;
   status: 'completed' | 'missed';
+  durationSeconds: number | null;
   userDisplayName: string;
   userPhotoURL: string;
 }
@@ -234,7 +236,8 @@ export const fetchAllCheckins = (groupId: string, dateRange: '7d' | '30d' | 'all
 export const createCheckin = async (
   groupId: string,
   scheduleId: string,
-  photoFile?: File | null
+  photoFile?: File | null,
+  durationSeconds?: number | null
 ): Promise<Checkin> => {
   if (photoFile) {
     const formData = new FormData();
@@ -242,7 +245,10 @@ export const createCheckin = async (
     formData.append('photo', photoFile);
     return uploadFormData<Checkin>(`/api/groups/${groupId}/checkins`, formData);
   }
-  return request<Checkin>('POST', `/api/groups/${groupId}/checkins`, { scheduleId });
+  return request<Checkin>('POST', `/api/groups/${groupId}/checkins`, {
+    scheduleId,
+    ...(durationSeconds != null ? { durationSeconds } : {})
+  });
 };
 
 // ---------- Invites ----------

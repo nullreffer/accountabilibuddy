@@ -88,16 +88,58 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
         ) : (
           messages.map((msg) => {
             const isOwn = msg.userId === user?.id;
+            const msgReactions = reactions[msg.id] ?? {};
+            const reactionEntries = Object.entries(msgReactions).filter(([, users]) => users.length > 0);
+
             if (msg.type === 'system') {
               return (
                 <div className="chat-system" key={msg.id}>
-                  <span>⚡ {msg.text}</span>
+                  <div className="chat-system__body">
+                    <span>⚡ {msg.text}</span>
+                    <div className="reaction-trigger-wrap" ref={pickerMsgId === msg.id ? pickerRef : null}>
+                      <button
+                        aria-label="Add reaction"
+                        className="reaction-trigger-btn"
+                        onClick={() => setPickerMsgId((current) => (current === msg.id ? null : msg.id))}
+                        type="button"
+                      >
+                        👍
+                      </button>
+                      {pickerMsgId === msg.id ? (
+                        <div className="reaction-picker reaction-picker--system">
+                          {REACTION_EMOJIS.map((emoji) => (
+                            <button
+                              aria-label={`React with ${emoji}`}
+                              className={`reaction-btn${user && (msgReactions[emoji] ?? []).includes(user.id) ? ' reaction-btn--active' : ''}`}
+                              key={emoji}
+                              onClick={() => toggleReaction(msg.id, emoji)}
+                              type="button"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  {reactionEntries.length > 0 ? (
+                    <div className="reaction-bar">
+                      {reactionEntries.map(([emoji, users]) => (
+                        <button
+                          aria-label={`${emoji} ${users.length}`}
+                          className={`reaction-chip${user && users.includes(user.id) ? ' reaction-chip--own' : ''}`}
+                          key={emoji}
+                          onClick={() => toggleReaction(msg.id, emoji as ReactionEmoji)}
+                          type="button"
+                        >
+                          {emoji} {users.length}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               );
             }
-
-            const msgReactions = reactions[msg.id] ?? {};
-            const reactionEntries = Object.entries(msgReactions).filter(([, users]) => users.length > 0);
 
             return (
               <div className={`chat-bubble-row${isOwn ? ' chat-bubble-row--own' : ''}`} key={msg.id}>
@@ -115,31 +157,35 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
                   {!isOwn ? (
                     <span className="chat-sender">{msg.userDisplayName}</span>
                   ) : null}
-                  <div
-                    className={`chat-bubble${isOwn ? ' chat-bubble--own' : ''}`}
-                    onMouseEnter={() => setPickerMsgId(msg.id)}
-                    onMouseLeave={(e) => {
-                      if (!pickerRef.current?.contains(e.relatedTarget as Node)) {
-                        setPickerMsgId(null);
-                      }
-                    }}
-                  >
-                    <p>{msg.text}</p>
-                    {pickerMsgId === msg.id ? (
-                      <div className="reaction-picker" ref={pickerRef}>
-                        {REACTION_EMOJIS.map((emoji) => (
-                          <button
-                            aria-label={`React with ${emoji}`}
-                            className={`reaction-btn${user && (msgReactions[emoji] ?? []).includes(user.id) ? ' reaction-btn--active' : ''}`}
-                            key={emoji}
-                            onClick={() => toggleReaction(msg.id, emoji)}
-                            type="button"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+                  <div className="chat-bubble-wrap">
+                    <div className={`chat-bubble${isOwn ? ' chat-bubble--own' : ''}`}>
+                      <p>{msg.text}</p>
+                    </div>
+                    <div className="reaction-trigger-wrap" ref={pickerMsgId === msg.id ? pickerRef : null}>
+                      <button
+                        aria-label="Add reaction"
+                        className="reaction-trigger-btn"
+                        onClick={() => setPickerMsgId((current) => (current === msg.id ? null : msg.id))}
+                        type="button"
+                      >
+                        👍
+                      </button>
+                      {pickerMsgId === msg.id ? (
+                        <div className={`reaction-picker${isOwn ? ' reaction-picker--own' : ''}`}>
+                          {REACTION_EMOJIS.map((emoji) => (
+                            <button
+                              aria-label={`React with ${emoji}`}
+                              className={`reaction-btn${user && (msgReactions[emoji] ?? []).includes(user.id) ? ' reaction-btn--active' : ''}`}
+                              key={emoji}
+                              onClick={() => toggleReaction(msg.id, emoji)}
+                              type="button"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   {reactionEntries.length > 0 ? (
                     <div className="reaction-bar">

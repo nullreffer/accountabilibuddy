@@ -17,9 +17,20 @@ class GoogleAuthConflictError extends Error {
   }
 }
 
+const maskEmail = (email: string) => {
+  const [name, domain] = email.split('@');
+  if (!domain) return 'invalid-email';
+  if (!name) return `*@${domain}`;
+  return `${name[0]}***@${domain}`;
+};
+
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get('origin') ?? 'unknown';
   try {
+    console.info('[auth/google] Sign-in attempt', { origin, hasClientId: Boolean(CLIENT_ID) });
+
     if (!CLIENT_ID) {
+      console.error('[auth/google] GOOGLE_CLIENT_ID is missing');
       return badRequest('Google Sign In is not configured (GOOGLE_CLIENT_ID missing)');
     }
 
@@ -33,11 +44,13 @@ export async function POST(req: NextRequest) {
     const payload = ticket.getPayload();
 
     if (!payload?.sub || !payload.email) {
+      console.warn('[auth/google] Google token missing expected payload fields', { origin });
       return badRequest('Invalid Google token');
     }
 
     const googleSub = payload.sub;
     const googleEmail = payload.email;
+    console.info('[auth/google] Token verified', { origin, email: maskEmail(googleEmail) });
 
     // Google verifies email addresses — trust the email_verified claim from the ID token
     const googleEmailVerified = payload.email_verified !== false;
@@ -122,6 +135,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     if (err instanceof GoogleAuthConflictError) {
+      console.warn('[auth/google] Sign-in conflict', { origin, code: err.code });
       if (err.code === 'GOOGLE_EMAIL_IN_USE') {
         return badRequest('This Google email is already used by another account. Please sign in with your existing method.');
       }
@@ -130,7 +144,13 @@ export async function POST(req: NextRequest) {
       }
     }
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      console.warn('[auth/google] Prisma unique constraint conflict', { origin });
       return badRequest('Account already exists with conflicting sign-in credentials');
+    }
+    if (err instanceof Error) {
+      console.error('[auth/google] Unexpected failure', { origin, message: err.message });
+    } else {
+      console.error('[auth/google] Unexpected non-error failure', { origin, error: String(err) });
     }
     return handleError(err);
   }

@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+const normalizeOrigin = (value: string) => value.trim().replace(/\/+$/, '');
+
+const CONFIGURED_ORIGINS = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const ALLOWED_ORIGINS = new Set([
+  ...CONFIGURED_ORIGINS,
+  'http://localhost:5173',
+  'http://localhost:3000'
+]);
 
 export function middleware(req: NextRequest) {
   const origin = req.headers.get('origin') ?? '';
+  const normalizedOrigin = normalizeOrigin(origin);
 
-  const isAllowed =
-    origin === ALLOWED_ORIGIN ||
-    origin === 'http://localhost:5173' ||
-    origin === 'http://localhost:3000';
+  const isAllowed = normalizedOrigin ? ALLOWED_ORIGINS.has(normalizedOrigin) : false;
 
   const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
@@ -18,6 +27,11 @@ export function middleware(req: NextRequest) {
 
   if (isAllowed) {
     corsHeaders['Access-Control-Allow-Origin'] = origin;
+  } else if (origin && req.nextUrl.pathname === '/api/auth/google') {
+    console.warn('[cors] Blocked /api/auth/google request', {
+      origin,
+      allowedOrigins: Array.from(ALLOWED_ORIGINS)
+    });
   }
 
   if (req.method === 'OPTIONS') {

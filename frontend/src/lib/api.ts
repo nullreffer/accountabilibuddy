@@ -27,11 +27,22 @@ const request = async <T>(
   path: string,
   body?: unknown
 ): Promise<T> => {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: headers(),
-    body: body !== undefined ? JSON.stringify(body) : undefined
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers: headers(),
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    });
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new ApiError(
+        0,
+        'Unable to reach the backend API. Check VITE_API_URL in frontend and FRONTEND_URL CORS config in backend.'
+      );
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
@@ -54,11 +65,22 @@ export class ApiError extends Error {
 
 export const uploadFormData = async <T>(path: string, formData: FormData): Promise<T> => {
   const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
-    headers: token ? { Authorization: 'Bearer ' + token } : {},
-    body: formData
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers: token ? { Authorization: 'Bearer ' + token } : {},
+      body: formData
+    });
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new ApiError(
+        0,
+        'Unable to reach the backend API. Check VITE_API_URL in frontend and FRONTEND_URL CORS config in backend.'
+      );
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));

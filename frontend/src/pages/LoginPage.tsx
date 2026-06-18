@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import BrandMark from '../components/BrandMark';
-import { apiUrl } from '../lib/api';
+import { ApiError, apiUrl } from '../lib/api';
 
 const APPLE_CLIENT_ID = import.meta.env.VITE_APPLE_CLIENT_ID as string | undefined;
 const APPLE_REDIRECT_URI = import.meta.env.VITE_APPLE_REDIRECT_URI as string | undefined
@@ -138,7 +138,20 @@ const LoginPage = () => {
                   setGoogleError('');
                   signIn(credentialResponse.credential)
                     .then(() => { navigate('/dashboard', { replace: true }); })
-                    .catch((err) => { console.error('Google sign-in error:', err); setGoogleError('Sign-in failed. Please try again.'); });
+                    .catch((err: unknown) => {
+                      console.error('Google sign-in error:', err);
+                      if (err instanceof ApiError) {
+                        setGoogleError(err.message);
+                        return;
+                      }
+                      if (err instanceof Error && err.message) {
+                        setGoogleError(err.message);
+                        return;
+                      }
+                      setGoogleError('Sign-in failed. Please try again.');
+                    });
+                } else {
+                  setGoogleError('Google sign-in did not return a credential.');
                 }
               }}
               onError={() => { setGoogleError('Google sign-in failed. Please try again.'); }}
@@ -208,4 +221,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

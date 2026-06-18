@@ -11,6 +11,10 @@ const oauthClient = new OAuth2Client(CLIENT_ID);
 
 export async function POST(req: NextRequest) {
   try {
+    if (!CLIENT_ID) {
+      return badRequest('Google Sign In is not configured (GOOGLE_CLIENT_ID missing)');
+    }
+
     const { idToken } = (await req.json()) as { idToken?: string };
 
     if (!idToken) {
@@ -27,22 +31,55 @@ export async function POST(req: NextRequest) {
     // Google verifies email addresses — trust the email_verified claim from the ID token
     const googleEmailVerified = payload.email_verified !== false;
 
-    const user = await prisma.user.upsert({
-      where: { googleId: payload.sub },
-      update: {
-        displayName: payload.name ?? 'AccountabiliBuddy User',
-        email: payload.email,
-        photoUrl: payload.picture ?? null,
-        emailVerified: googleEmailVerified
-      },
-      create: {
-        googleId: payload.sub,
-        displayName: payload.name ?? 'AccountabiliBuddy User',
-        email: payload.email,
-        photoUrl: payload.picture ?? null,
-        emailVerified: googleEmailVerified
+    let user = await prisma.user.findUnique({ where: { googleId: payload.sub } });
+
+    if (user) {
+      if (user.email !== payload.email) {
+        const emailOwner = await prisma.user.findUnique({ where: { email: payload.email } });
+        if (emailOwner && emailOwner.id !== user.id) {
+          return badRequest('This Google email is already used by another account');
+        }
       }
-    });
+
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          displayName: payload.name ?? 'AccountabiliBuddy User',
+          email: payload.email,
+          photoUrl: payload.picture ?? null,
+          emailVerified: googleEmailVerified
+        }
+      });
+    } else {
+      const existing = await prisma.user.findUnique({ where: { email: payload.email } });
+
+      if (existing?.googleId && existing.googleId !== payload.sub) {
+        return badRequest('This email is already linked to another Google account');
+      }
+
+      if (existing) {
+        user = await prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            googleId: payload.sub,
+            displayName: payload.name ?? existing.displayName,
+            email: payload.email,
+            photoUrl: payload.picture ?? existing.photoUrl,
+            emailVerified: googleEmailVerified
+          }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            googleId: payload.sub,
+            displayName: payload.name ?? 'AccountabiliBuddy User',
+            email: payload.email,
+            photoUrl: payload.picture ?? null,
+            emailVerified: googleEmailVerified
+          }
+        });
+      }
+    }
 
     // For unverified users, regenerate code and send email
     if (!user.emailVerified) {

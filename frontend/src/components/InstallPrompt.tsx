@@ -22,6 +22,9 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
   useEffect(() => {
     const handler = (event: Event) => {
       event.preventDefault();
+      // Browser is offering install again – clear any previous dismissal
+      try { localStorage.removeItem('install-dismissed'); } catch { /* ignore */ }
+      setDismissed(false);
       setInstallEvent(event as BeforeInstallPromptEvent);
     };
     const handleInstalled = () => {
@@ -45,6 +48,8 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
     }
 
     if (!installEvent) {
+      // Browser doesn't support the install prompt (e.g. Firefox, some desktops)
+      window.alert('To install Squad-Goals, use your browser\'s menu and look for "Add to Home Screen" or "Install app".');
       return;
     }
 
@@ -57,26 +62,31 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
     }
   };
 
-  if ((!installEvent && !canInstallOnIos) || dismissed) {
+  if (isStandalone) {
     return null;
   }
 
   if (compact) {
+    // Always show in compact (profile dropdown) mode when not in standalone
     return (
       <button className="button button--secondary button--small" onClick={() => void handleInstall()}>
-        Install SquadGoals
+        Install Squad-Goals
       </button>
     );
+  }
+
+  if ((!installEvent && !canInstallOnIos) || dismissed) {
+    return null;
   }
 
   return (
     <div className="install-prompt">
       <div>
-        <p className="install-prompt__title">{canInstallOnIos ? 'Install SquadGoals on your phone' : 'Add SquadGoals to your Home Screen'}</p>
+        <p className="install-prompt__title">{canInstallOnIos ? 'Install Squad-Goals on your phone' : 'Add Squad-Goals to your Home Screen'}</p>
         <p className="install-prompt__body">
           {canInstallOnIos
-            ? 'Use Safari’s share menu, then tap “Add to Home Screen” to install SquadGoals.'
-            : 'Install SquadGoals for faster access, reminders, and push notifications.'}
+            ? 'Use Safari\u2019s share menu, then tap \u201cAdd to Home Screen\u201d to install Squad-Goals.'
+            : 'Install Squad-Goals for faster access, reminders, and push notifications.'}
         </p>
         {showIosInstructions ? (
           <p className="helper-text">On iPhone, tap Share → Add to Home Screen.</p>

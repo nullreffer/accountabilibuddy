@@ -2,10 +2,7 @@ import { useMemo } from 'react';
 import { useCheckins } from '../hooks/useCheckins';
 import { useMembers } from '../hooks/useMembers';
 import { getAvatarFallback } from '../lib/avatar';
-
-/** Returns the local calendar date as YYYY-MM-DD (resets at local midnight). */
-const localDateStr = (d?: Date | string) =>
-  new Date(d ?? Date.now()).toLocaleDateString('en-CA');
+import { localDateStr } from '../lib/format';
 
 const GroupCardMembers = ({ groupId }: { groupId: string }) => {
   const { members } = useMembers(groupId);

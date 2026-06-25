@@ -16,16 +16,12 @@ import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
 import { createCheckin, updateGroup, deleteGroup, scheduleIcsUrl } from '../lib/api';
 import { getAvatarFallback } from '../lib/avatar';
-import { formatDuration } from '../lib/format';
+import { formatDuration, localDateStr } from '../lib/format';
 import { getScheduleDateKey, hasScheduleStarted } from '../lib/schedules';
 
 const tabs = ['chat', 'jar'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'];
-
-/** Returns the local calendar date as YYYY-MM-DD (resets at local midnight). */
-const localDateStr = (d?: Date | string) =>
-  new Date(d ?? Date.now()).toLocaleDateString('en-CA');
 
 const timerKey = (gid: string) => `ab_timer_start_${gid}`;
 

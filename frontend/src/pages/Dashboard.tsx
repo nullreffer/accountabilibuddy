@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CreateGroupForm from '../components/CreateGroupForm';
+import GroupCardMembers from '../components/GroupCardMembers';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchGroups, type Group } from '../lib/api';
@@ -46,7 +47,7 @@ const Dashboard = () => {
   }, [user]);
 
   if (loading) {
-    return <LoadingSpinner label="Loading your SquadGoals groups..." />;
+    return <LoadingSpinner label="Loading your Squad-Goals groups..." />;
   }
 
   return (
@@ -62,6 +63,7 @@ const Dashboard = () => {
                 </div>
                 <h2>{group.name}</h2>
                 <p>{group.description || 'No description yet.'}</p>
+                <GroupCardMembers groupId={group.id} />
               </div>
               <div className="group-card__footer">
                 <span className="button button--ghost">Open group</span>

@@ -72,7 +72,7 @@ const Navbar = () => {
       <Link className="navbar__brand-link" to="/dashboard">
         <BrandMark className="navbar__logo" />
         <div>
-          <p className="navbar__title">SquadGoals</p>
+          <p className="navbar__title">Squad-Goals</p>
           <p className="navbar__subtitle">Hold each other accountable.</p>
         </div>
       </Link>

@@ -82,6 +82,7 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
 
   return (
     <section className="chat-panel stack-lg">
+      {checkinSlot ? <div className="chat-checkin-bar card">{checkinSlot}</div> : null}
       <div className="chat-messages card" aria-live="polite" aria-label="Chat messages">
         {messages.length === 0 ? (
           <p className="chat-empty">No messages yet. Say hello!</p>
@@ -214,7 +215,6 @@ const ChatPanel = ({ groupId, checkinSlot }: { groupId: string; checkinSlot?: Re
       </div>
 
       <form className="chat-composer card" onSubmit={(event) => void handleSubmit(event)}>
-        {checkinSlot ? <div className="chat-composer__checkin">{checkinSlot}</div> : null}
         <input
           aria-label="Message"
           className="input chat-input"

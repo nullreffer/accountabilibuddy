@@ -11,6 +11,7 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
     try { return localStorage.getItem('install-dismissed') === '1'; } catch { return false; }
   });
   const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const [showUnsupportedHint, setShowUnsupportedHint] = useState(false);
   const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -22,6 +23,10 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
   useEffect(() => {
     const handler = (event: Event) => {
       event.preventDefault();
+      // Browser is offering install again – clear any previous dismissal
+      try { localStorage.removeItem('install-dismissed'); } catch { /* ignore */ }
+      setDismissed(false);
+      setShowUnsupportedHint(false);
       setInstallEvent(event as BeforeInstallPromptEvent);
     };
     const handleInstalled = () => {
@@ -45,6 +50,8 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
     }
 
     if (!installEvent) {
+      // Browser doesn't support the install prompt – show an inline hint
+      setShowUnsupportedHint(true);
       return;
     }
 
@@ -57,26 +64,43 @@ const InstallPrompt = ({ compact = false }: { compact?: boolean }) => {
     }
   };
 
-  if ((!installEvent && !canInstallOnIos) || dismissed) {
+  if (isStandalone) {
     return null;
   }
 
   if (compact) {
+    // Always show in compact (profile dropdown) mode when not in standalone
     return (
-      <button className="button button--secondary button--small" onClick={() => void handleInstall()}>
-        Install SquadGoals
-      </button>
+      <div>
+        <button className="button button--secondary button--small" onClick={() => void handleInstall()}>
+          Install Squad-Goals
+        </button>
+        {showUnsupportedHint ? (
+          <p className="helper-text" style={{ marginTop: '0.4rem', fontSize: '0.8rem' }}>
+            Use your browser menu and look for &ldquo;Add to Home Screen&rdquo; or &ldquo;Install app&rdquo;.
+          </p>
+        ) : null}
+        {showIosInstructions ? (
+          <p className="helper-text" style={{ marginTop: '0.4rem', fontSize: '0.8rem' }}>
+            On iPhone: tap Share → Add to Home Screen.
+          </p>
+        ) : null}
+      </div>
     );
+  }
+
+  if ((!installEvent && !canInstallOnIos) || dismissed) {
+    return null;
   }
 
   return (
     <div className="install-prompt">
       <div>
-        <p className="install-prompt__title">{canInstallOnIos ? 'Install SquadGoals on your phone' : 'Add SquadGoals to your Home Screen'}</p>
+        <p className="install-prompt__title">{canInstallOnIos ? 'Install Squad-Goals on your phone' : 'Add Squad-Goals to your Home Screen'}</p>
         <p className="install-prompt__body">
           {canInstallOnIos
-            ? 'Use Safari’s share menu, then tap “Add to Home Screen” to install SquadGoals.'
-            : 'Install SquadGoals for faster access, reminders, and push notifications.'}
+            ? 'Use Safari\u2019s share menu, then tap \u201cAdd to Home Screen\u201d to install Squad-Goals.'
+            : 'Install Squad-Goals for faster access, reminders, and push notifications.'}
         </p>
         {showIosInstructions ? (
           <p className="helper-text">On iPhone, tap Share → Add to Home Screen.</p>

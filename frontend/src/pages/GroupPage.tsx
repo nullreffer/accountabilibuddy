@@ -10,19 +10,18 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import MemberList from '../components/MemberList';
 import ScheduleCard from '../components/ScheduleCard';
 import { useAuth } from '../contexts/AuthContext';
-import { useCheckins } from '../hooks/useCheckins';
+import { useCheckins, useAllCheckins } from '../hooks/useCheckins';
 import { useGroup } from '../hooks/useGroup';
 import { useMembers } from '../hooks/useMembers';
 import { createSchedule, deleteSchedule, useSchedules } from '../hooks/useSchedules';
 import { createCheckin, updateGroup, deleteGroup, scheduleIcsUrl } from '../lib/api';
 import { getAvatarFallback } from '../lib/avatar';
-import { formatDuration } from '../lib/format';
+import { formatDuration, localDateStr } from '../lib/format';
+import { getScheduleDateKey, hasScheduleStarted } from '../lib/schedules';
 
 const tabs = ['chat', 'jar'] as const;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'];
-
-const todayKey = () => new Date().toISOString().split('T')[0];
 
 const timerKey = (gid: string) => `ab_timer_start_${gid}`;
 
@@ -65,6 +64,8 @@ const GroupPage = () => {
   const { members } = useMembers(groupId);
   const { schedules, loading: schedulesLoading } = useSchedules(groupId);
   const { checkins, loading: checkinsLoading } = useCheckins(groupId, 50);
+  // 7-day checkin history for avatar checkmarks (needs full week coverage for weekly schedules)
+  const { checkins: allCheckins } = useAllCheckins(groupId, '7d');
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('chat');
   const [activeModal, setActiveModal] = useState<'members' | 'invite' | 'settings' | 'notifications' | 'chart' | 'schedules' | null>(null);
   const [groupMenuOpen, setGroupMenuOpen] = useState(false);
@@ -108,18 +109,48 @@ const GroupPage = () => {
 
   const canManage = member?.role === 'owner' || member?.role === 'coowner';
   const isOwner = member?.role === 'owner';
-  const today = todayKey();
+  const todayLocal = localDateStr();
 
+  // Resets at local midnight: compare completedAt converted to local date
   const todaysCheckin = useMemo(
-    () => checkins.find((checkin) => checkin.uid === user?.id && checkin.date === today && checkin.status === 'completed'),
-    [checkins, today, user?.id]
+    () => checkins.find(
+      (checkin) => checkin.uid === user?.id &&
+        checkin.status === 'completed' &&
+        localDateStr(checkin.completedAt) === todayLocal
+    ),
+    [checkins, todayLocal, user?.id]
   );
 
-  // UIDs of all members who have completed a check-in today (for header avatars)
-  const todayCheckinUids = useMemo(
-    () => new Set(checkins.filter((c) => c.date === today && c.status === 'completed').map((c) => c.uid)),
-    [checkins, today]
-  );
+  // UIDs of members who have completed all currently-due schedules (resets per schedule period).
+  // For daily schedules the period resets at local midnight; for weekly/monthly on the next eligible day.
+  const todayCheckinUids = useMemo(() => {
+    const now = new Date();
+    const completedIds = new Set(
+      allCheckins.filter((c) => c.status === 'completed').map((c) => c.id)
+    );
+
+    if (schedules.length === 0) {
+      // No schedules: fall back to simple "checked in today (local)" indicator
+      return new Set(
+        allCheckins
+          .filter((c) => c.status === 'completed' && localDateStr(c.completedAt) === todayLocal)
+          .map((c) => c.uid)
+      );
+    }
+
+    // A member gets a checkmark when they have no overdue scheduled actions
+    const dueSchedules = schedules.filter((s) => hasScheduleStarted(s, now));
+    return new Set(
+      members
+        .filter((m) => {
+          const overdue = dueSchedules.filter(
+            (s) => !completedIds.has(`${s.id}_${m.uid}_${getScheduleDateKey(s, now)}`)
+          );
+          return dueSchedules.length > 0 && overdue.length === 0;
+        })
+        .map((m) => m.uid)
+    );
+  }, [allCheckins, schedules, members, todayLocal]);
 
   // Load notification prefs when user/group are available
   useEffect(() => {
@@ -341,42 +372,52 @@ const GroupPage = () => {
   // Derive check-in type from group settings
   const checkinType = group?.settings.checkinType ?? 'standard';
 
-  // Build the check-in slot that lives beside the Send button in chat
+  // Build the check-in bar that appears above the chat messages
   const checkinSlot = (() => {
     if (!group || !user) return null;
     if (todaysCheckin) {
       if (checkinType === 'timer' && todaysCheckin.durationSeconds != null) {
         return (
-          <span className="checkin-done-pill checkin-done-pill--timer" title="Checked in today">
-            ✅ {formatDuration(todaysCheckin.durationSeconds)}
-          </span>
+          <div className="checkin-bar__inner checkin-bar__inner--done">
+            <span className="checkin-bar__icon">✅</span>
+            <span className="checkin-bar__label">Checked in today · {formatDuration(todaysCheckin.durationSeconds)}</span>
+          </div>
         );
       }
-      return <span className="checkin-done-pill" title="Checked in today">✅</span>;
+      return (
+        <div className="checkin-bar__inner checkin-bar__inner--done">
+          <span className="checkin-bar__icon">✅</span>
+          <span className="checkin-bar__label">Checked in today</span>
+        </div>
+      );
     }
     if (checkinType === 'timer') {
       if (!timerStartTime) {
         return (
-          <button className="icon-btn checkin-action-btn" onClick={handleTimerStart} title="Start timer check-in" type="button">
-            ▶
-          </button>
+          <div className="checkin-bar__inner">
+            <button className="button button--secondary button--small checkin-bar__btn" onClick={handleTimerStart} type="button">
+              ▶ Start timer check-in
+            </button>
+          </div>
         );
       }
       return (
-        <>
+        <div className="checkin-bar__inner">
           <span className="timer-display timer-display--sm">{formatDuration(elapsedSeconds)}</span>
-          <button className="icon-btn checkin-action-btn checkin-action-btn--done" disabled={checkinLoading} onClick={() => void handleTimerDone()} title="Done" type="button">
-            {checkinLoading ? '…' : '✓'}
+          <button className="button button--primary button--small checkin-bar__btn" disabled={checkinLoading} onClick={() => void handleTimerDone()} type="button">
+            {checkinLoading ? '…' : '✓ Done'}
           </button>
-          <button className="icon-btn" onClick={handleTimerCancel} title="Cancel timer" type="button">✕</button>
-        </>
+          <button className="button button--ghost button--small" onClick={handleTimerCancel} type="button">✕ Cancel</button>
+        </div>
       );
     }
     // standard
     return (
-      <button className="icon-btn checkin-action-btn" disabled={checkinLoading} onClick={() => void handleCheckIn()} title="Check in" type="button">
-        {checkinLoading ? '…' : '✓'}
-      </button>
+      <div className="checkin-bar__inner">
+        <button className="button button--primary button--small checkin-bar__btn" disabled={checkinLoading} onClick={() => void handleCheckIn()} type="button">
+          {checkinLoading ? '…' : '✓ Check in'}
+        </button>
+      </div>
     );
   })();
 

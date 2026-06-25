@@ -16,3 +16,7 @@ export const formatDuration = (seconds: number): string => {
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
+
+/** Returns the local calendar date as a YYYY-MM-DD string (resets at local midnight). */
+export const localDateStr = (d?: Date | string | number): string =>
+  new Date(d ?? Date.now()).toLocaleDateString('en-CA');
